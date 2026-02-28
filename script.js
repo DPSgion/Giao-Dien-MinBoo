@@ -1,6 +1,6 @@
 // Thay đổi URL này thành endpoint API thực tế từ backend của bạn
 //const https://18.143.180.168phobo.onrender.com/users'; 
-const API_URL = 'http://www.minboo-be.io.vn:8080/users'; 
+const API_URL = 'https://www.minboo-be.io.vn/users'; 
 
 const tableBody = document.getElementById('tableBody');
 
