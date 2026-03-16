@@ -1,4 +1,3 @@
-/* Reset cơ bản */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -29,7 +28,6 @@ h2 {
     color: #2c3e50;
 }
 
-/* Kiểu dáng cho bảng */
 table {
     width: 100%;
     border-collapse: collapse;
@@ -51,12 +49,10 @@ th {
     letter-spacing: 0.5px;
 }
 
-/* Màu nền xen kẽ cho các dòng */
 tr:nth-child(even) {
     background-color: #f9f9f9;
 }
 
-/* Hiệu ứng khi di chuột qua dòng */
 tr:hover {
     background-color: #f1f5f9;
     transition: background-color 0.2s ease-in;
