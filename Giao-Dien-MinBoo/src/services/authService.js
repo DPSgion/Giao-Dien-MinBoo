@@ -18,7 +18,25 @@ const authService = {
     // Body: { username, password }
     // Response 200: { success, data: { user, access_token, refresh_token } }
     // ============================================================
-    login: (data) => axiosClient.post("/auth/login", data),
+    login: async (data) => {
+        // [MOCK] Tự động đăng nhập
+        return new Promise(resolve => setTimeout(() => {
+            resolve({
+                data: {
+                    user: {
+                        user_id: '7d99d30e-caeb-4e3a-aa81-cc5a7c58a1d2',
+                        name: 'Tài Nguyễn (Admin Test)',
+                        username: data.username || 'admin',
+                        url_avt: 'https://ui-avatars.com/api/?name=Tai&background=7c3aed&color=fff',
+                        role: 1, 
+                        is_active: true
+                    },
+                    access_token: 'fake',
+                    refresh_token: 'fake'
+                }
+            });
+        }, 800));
+    },
 
     // ============================================================
     // [API 2.3] POST /auth/refresh-token - Lấy token mới

@@ -1,4 +1,5 @@
 import axiosClient from "./axiosClient";
+import { mockTags } from "./adminService";
 
 // ============================================================
 // USER SERVICE - Quản lý thông tin người dùng
@@ -29,75 +30,159 @@ export const userService = {
 };
 
 // ============================================================
+// MOCK DATA CHO FRIENDS
+// ============================================================
+const mockFriends = [
+    {
+        user_id: 'user-uuid-3',
+        name: 'Khánh Vi',
+        url_avt: 'https://ui-avatars.com/api/?name=Khanh+Vi&background=ec4899&color=fff'
+    },
+    {
+        user_id: 'user-uuid-4',
+        name: 'Đức Phát',
+        url_avt: 'https://ui-avatars.com/api/?name=Duc+Phat&background=3b82f6&color=fff'
+    },
+    {
+        user_id: 'user-uuid-5',
+        name: 'Hải Trình',
+        url_avt: 'https://ui-avatars.com/api/?name=Hai+Trinh&background=10b981&color=fff'
+    }
+];
+
+// ============================================================
 // FRIEND SERVICE - Quản lý bạn bè
 // ============================================================
 export const friendService = {
-    // [API 4.1] GET /users/{user_id}/friends - Danh sách bạn bè
-    // Backend Java: FriendController.getFriends(@PathVariable String userId)
-    // Query: { page?, limit?, search? }
-    getFriends: (userId, params) =>
-        axiosClient.get(`/users/${userId}/friends`, { params }),
+    // [MOCK] Danh sách bạn bè
+    getFriends: async (userId, params) => {
+        await new Promise(r => setTimeout(r, 400));
+        return { data: { friends: mockFriends } };
+    },
 
-    // [API 4.2] POST /friends/requests - Gửi lời mời kết bạn
-    // Backend Java: FriendController.sendFriendRequest(@RequestBody FriendRequestDTO)
-    // Body: { to_id_B, message? }
-    sendRequest: (data) => axiosClient.post("/friends/requests", data),
+    // [MOCK] Lời mời kết bạn
+    sendRequest: async (data) => {
+        await new Promise(r => setTimeout(r, 300));
+        return { data: { success: true } };
+    },
 
-    // [API 4.3] PATCH /friends/requests/{id}/accept - Chấp nhận lời mời
-    // Backend Java: FriendController.acceptRequest(@PathVariable int friendRequestId)
-    acceptRequest: (friendRequestId) =>
-        axiosClient.patch(`/friends/requests/${friendRequestId}/accept`),
+    acceptRequest: async (friendRequestId) => ({ data: { success: true } }),
+    deleteRequest: async (friendRequestId) => ({ data: { success: true } }),
+    unfriend: async (userId) => ({ data: { success: true } }),
 
-    // [API 4.4] DELETE /friends/requests/{id} - Từ chối / hủy lời mời
-    // Backend Java: FriendController.deleteRequest(@PathVariable int friendRequestId)
-    deleteRequest: (friendRequestId) =>
-        axiosClient.delete(`/friends/requests/${friendRequestId}`),
-
-    // [API 4.5] DELETE /friends/{user_id} - Hủy kết bạn
-    // Backend Java: FriendController.unfriend(@PathVariable String userId)
-    unfriend: (userId) => axiosClient.delete(`/friends/${userId}`),
-
-    // [API 4.6] GET /friends/requests/pending - Lời mời đang chờ
-    // Backend Java: FriendController.getPendingRequests()
-    // Response: { received: [...], sent: [...] }
-    getPendingRequests: () => axiosClient.get("/friends/requests/pending"),
+    getPendingRequests: async () => {
+        await new Promise(r => setTimeout(r, 300));
+        return {
+            data: {
+                received: [
+                    { id: 1, from_user: { user_id: 'u6', name: 'Hoài Lâm', url_avt: '' } }
+                ],
+                sent: []
+            }
+        };
+    },
 };
+
+// ============================================================
+// MOCK DATA DÀNH CHO BÀI VIẾT (POSTS)
+// ============================================================
+const mockPosts = [
+    {
+        post_id: 'post-uuid-1',
+        author: {
+            user_id: 'user-uuid-1',
+            name: 'Nguyễn Văn A',
+            url_avt: 'https://ui-avatars.com/api/?name=Nguyen+Van+A&background=random'
+        },
+        content: 'Chào ngày mới mọi người! Hôm nay thời tiết thật đẹp.',
+        url_img: 'https://picsum.photos/seed/post1/600/400',
+        privacy: 'public',
+        reaction_count: 15,
+        comment_count: 3,
+        created_at: new Date(Date.now() - 3600000).toISOString()
+    },
+    {
+        post_id: 'post-uuid-2',
+        author: {
+            user_id: 'user-uuid-2',
+            name: 'Trần Bình',
+            url_avt: 'https://ui-avatars.com/api/?name=Tran+Binh&background=random'
+        },
+        content: 'Vừa hoàn thành xong project ReactJS đầu tay! Vui quá đi mất 🎉',
+        url_img: null,
+        privacy: 'public',
+        reaction_count: 42,
+        comment_count: 8,
+        created_at: new Date(Date.now() - 7200000).toISOString()
+    }
+];
 
 // ============================================================
 // POST SERVICE - Quản lý bài viết
 // ============================================================
 export const postService = {
-    // [API 5.1] GET /posts/feed - Bảng tin Home Feed
-    // Backend Java: PostController.getFeed(@RequestParam int page, int limit)
-    // Query: { page?, limit? }
-    getFeed: (params) => axiosClient.get("/posts/feed", { params }),
+    // [MOCK] Lấy bảng tin (Feed)
+    getFeed: async (params) => {
+        await new Promise(r => setTimeout(r, 600)); // giả lập delay mạng
+        const page = params?.page || 1;
+        const limit = params?.limit || 10;
+        const start = (page - 1) * limit;
+        const result = mockPosts.slice(start, start + limit);
+        return { data: { posts: result } };
+    },
 
-    // [API 5.2] GET /users/{user_id}/posts - Bài viết của một user
-    // Backend Java: PostController.getUserPosts(@PathVariable String userId)
-    getUserPosts: (userId, params) =>
-        axiosClient.get(`/users/${userId}/posts`, { params }),
+    // [MOCK] Lấy bài của 1 User
+    getUserPosts: async (userId, params) => {
+        await new Promise(r => setTimeout(r, 400));
+        return { data: { posts: mockPosts.filter(p => p.author.user_id === userId) } };
+    },
 
-    // [API 5.3] POST /posts - Tạo bài viết mới
-    // Backend Java: PostController.createPost(@RequestBody / MultipartForm)
-    // Content-Type: multipart/form-data
-    // Body: { content?, url_img (file)?, privacy, tag_ids? }
-    createPost: (formData) =>
-        axiosClient.post("/posts", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-        }),
+    // [MOCK] Đăng bài viết mới
+    createPost: async (formData) => {
+        await new Promise(r => setTimeout(r, 800));
+        
+        const content = formData.get('content') || '';
+        const privacy = formData.get('privacy') || 'public';
+        const file = formData.get('url_img');
+        
+        let url_img = null;
+        if (file && file.size > 0) {
+            url_img = URL.createObjectURL(file);
+        }
 
-    // [API 5.4] PATCH /posts/{post_id} - Cập nhật bài viết
-    // Backend Java: PostController.updatePost(@PathVariable String postId, @RequestBody)
-    // Body: { content?, privacy?, tag_ids? }
-    updatePost: (postId, data) => axiosClient.patch(`/posts/${postId}`, data),
+        const rawUser = localStorage.getItem("user");
+        const currentUser = rawUser ? JSON.parse(rawUser) : { name: 'Người dùng', url_avt: 'https://ui-avatars.com/api/?name=User' };
 
-    // [API 5.5] DELETE /posts/{post_id} - Xóa bài viết
-    // Backend Java: PostController.deletePost(@PathVariable String postId)
-    deletePost: (postId) => axiosClient.delete(`/posts/${postId}`),
+        const newPost = {
+            post_id: `post-uuid-${Date.now()}`,
+            author: currentUser,
+            content,
+            url_img,
+            privacy,
+            reaction_count: 0,
+            comment_count: 0,
+            created_at: new Date().toISOString()
+        };
 
-    // [API 5.6] GET /posts/{post_id} - Chi tiết bài viết
-    // Backend Java: PostController.getPostById(@PathVariable String postId)
-    getPost: (postId) => axiosClient.get(`/posts/${postId}`),
+        mockPosts.unshift(newPost); // Thêm lên đầu trang
+        return { data: newPost };
+    },
+
+    updatePost: async (postId, data) => ({ data: { success: true } }),
+
+    // [MOCK] Xóa bài
+    deletePost: async (postId) => {
+        await new Promise(r => setTimeout(r, 400));
+        const index = mockPosts.findIndex(p => p.post_id === postId);
+        if (index !== -1) mockPosts.splice(index, 1);
+        return { data: { success: true } };
+    },
+
+    getPost: async (postId) => {
+        await new Promise(r => setTimeout(r, 300));
+        const post = mockPosts.find(p => p.post_id === postId);
+        return { data: post };
+    },
 };
 
 // ============================================================
@@ -127,36 +212,45 @@ export const commentService = {
 // REACTION SERVICE - Tương tác (Like, Love, Haha, Sad, Angry)
 // ============================================================
 export const reactionService = {
-    // [API 7.1] POST /posts/{post_id}/reactions - React bài viết
-    // Backend Java: ReactionController.reactPost(@PathVariable String postId, @RequestBody)
-    // Body: { type: "like" | "love" | "haha" | "sad" | "angry" }
-    // Lưu ý: DB có UNIQUE(post_id, user_id) -> nếu đã react sẽ UPDATE thay vì INSERT
-    reactPost: (postId, type) =>
-        axiosClient.post(`/posts/${postId}/reactions`, { type }),
+    // [MOCK] Thả react (Like)
+    reactPost: async (postId, type) => {
+        await new Promise(r => setTimeout(r, 200));
+        const post = mockPosts.find(p => p.post_id === postId);
+        if (post) post.reaction_count += 1;
+        return { data: { success: true } };
+    },
 
-    // [API 7.2] DELETE /posts/{post_id}/reactions - Xóa reaction
-    // Backend Java: ReactionController.removeReaction(@PathVariable String postId)
-    removeReaction: (postId) => axiosClient.delete(`/posts/${postId}/reactions`),
+    // [MOCK] Bỏ Like
+    removeReaction: async (postId) => {
+        await new Promise(r => setTimeout(r, 200));
+        const post = mockPosts.find(p => p.post_id === postId);
+        if (post && post.reaction_count > 0) post.reaction_count -= 1;
+        return { data: { success: true } };
+    },
 
-    // [API 7.3] GET /posts/{post_id}/reactions - Danh sách người đã react
-    // Backend Java: ReactionController.getReactions(@PathVariable String postId)
-    // Query: { type?, page?, limit? }
-    getReactions: (postId, params) =>
-        axiosClient.get(`/posts/${postId}/reactions`, { params }),
+    getReactions: async () => ({ data: [] })
 };
 
 // ============================================================
 // TAG SERVICE - Quản lý thẻ tag
 // ============================================================
 export const tagService = {
-    // [API 8.1] GET /tags - Lấy tất cả tags
-    // Backend Java: TagController.getAllTags()
-    getAllTags: () => axiosClient.get("/tags"),
+    // [MOCK] Lấy danh sách tags đã cho phép bởi Admin
+    getAllTags: async () => {
+        await new Promise(r => setTimeout(r, 200));
+        return { data: { tags: mockTags } };
+    },
 
-    // [API 8.2] POST /tags - Tạo tag mới
-    // Backend Java: TagController.createTag(@RequestBody)
-    // Body: { tag_name } - UNIQUE constraint, 409 nếu trùng
-    createTag: (tag_name) => axiosClient.post("/tags", { tag_name }),
+    // [MOCK] Tạo tag mới (User có thể gọi, tuy nhiên thường Admin làm)
+    createTag: async (tag_name) => {
+        await new Promise(r => setTimeout(r, 200));
+        mockTags.push({
+            tag_id: mockTags.length + 1,
+            tag_name: tag_name,
+            created_at: new Date().toISOString()
+        });
+        return { data: { success: true } };
+    },
 };
 
 // ============================================================
