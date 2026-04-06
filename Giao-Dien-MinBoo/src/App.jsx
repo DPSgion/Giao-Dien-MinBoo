@@ -42,9 +42,7 @@ function AdminRoute() {
       </div>
     );
   }
-  // TẠM THỜI TẮT CHECK LOGIN ĐỂ BẠN TEST GIAO DIỆN ADMIN:
-  // if (!user) return <Navigate to="/login" replace />;
-  // Ở đây nếu có check quyền admin e.g: if (user?.role !== 'admin') return <Navigate to="/" />;
+
   return <AdminLayout />;
 }
 
@@ -158,8 +156,9 @@ function AppRoutes() {
 }
 
 export default function App() {
+  const basename = import.meta.env.DEV ? "/" : "/Giao-Dien-MinBoo";
   return (
-    <BrowserRouter basename="/Giao-Dien-MinBoo">
+    <BrowserRouter basename={basename}>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

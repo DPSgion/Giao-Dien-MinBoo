@@ -99,16 +99,7 @@ export default function Login() {
                     </Link>
                 </div>
 
-                {/* App download */}
-                <div className="text-center mt-4">
-                    <p className="text-sm text-gray-900 mb-3">Tải ứng dụng.</p>
-                    <div className="flex justify-center gap-2">
-                        <img src="https://static.cdninstagram.com/rsrc.php/v3/yz/r/c5Rp7Ym-Klz.png"
-                            alt="App Store" className="h-10 object-contain" />
-                        <img src="https://static.cdninstagram.com/rsrc.php/v3/yu/r/EHY6QnZYdNX.png"
-                            alt="Google Play" className="h-10 object-contain" />
-                    </div>
-                </div>
+
             </div>
         </div>
     );

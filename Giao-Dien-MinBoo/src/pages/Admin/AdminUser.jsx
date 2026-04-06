@@ -5,7 +5,7 @@ export default function AdminUsers() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
-  const [filterActive, setFilterActive] = useState('all'); // all | true | false
+  const [filterActive, setFilterActive] = useState('all');
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0 });
   const [togglingId, setTogglingId] = useState(null);
@@ -260,15 +260,15 @@ export default function AdminUsers() {
                         style={
                           u.role === 1
                             ? {
-                                background: 'rgba(124,58,237,0.2)',
-                                color: '#a78bfa',
-                                border: '1px solid rgba(124,58,237,0.3)',
-                              }
+                              background: 'rgba(124,58,237,0.2)',
+                              color: '#a78bfa',
+                              border: '1px solid rgba(124,58,237,0.3)',
+                            }
                             : {
-                                background: '#1f1f2e',
-                                color: '#6b7280',
-                                border: '1px solid #2a2a38',
-                              }
+                              background: '#1f1f2e',
+                              color: '#6b7280',
+                              border: '1px solid #2a2a38',
+                            }
                         }
                       >
                         {u.role === 1 ? 'Admin' : 'User'}
@@ -280,15 +280,15 @@ export default function AdminUsers() {
                         style={
                           u.is_active
                             ? {
-                                background: 'rgba(16,185,129,0.15)',
-                                color: '#34d399',
-                                border: '1px solid rgba(16,185,129,0.3)',
-                              }
+                              background: 'rgba(16,185,129,0.15)',
+                              color: '#34d399',
+                              border: '1px solid rgba(16,185,129,0.3)',
+                            }
                             : {
-                                background: 'rgba(239,68,68,0.15)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239,68,68,0.3)',
-                              }
+                              background: 'rgba(239,68,68,0.15)',
+                              color: '#f87171',
+                              border: '1px solid rgba(239,68,68,0.3)',
+                            }
                         }
                       >
                         {u.is_active ? '● Hoạt động' : '● Bị khóa'}
@@ -304,15 +304,15 @@ export default function AdminUsers() {
                         style={
                           u.is_active
                             ? {
-                                background: 'rgba(239,68,68,0.15)',
-                                color: '#f87171',
-                                border: '1px solid rgba(239,68,68,0.3)',
-                              }
+                              background: 'rgba(239,68,68,0.15)',
+                              color: '#f87171',
+                              border: '1px solid rgba(239,68,68,0.3)',
+                            }
                             : {
-                                background: 'rgba(16,185,129,0.15)',
-                                color: '#34d399',
-                                border: '1px solid rgba(16,185,129,0.3)',
-                              }
+                              background: 'rgba(16,185,129,0.15)',
+                              color: '#34d399',
+                              border: '1px solid rgba(16,185,129,0.3)',
+                            }
                         }
                       >
                         {togglingId === u.user_id

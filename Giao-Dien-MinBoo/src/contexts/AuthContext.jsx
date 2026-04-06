@@ -1,41 +1,158 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
+import axiosClient from "../services/axiosClient";
 
 const AuthContext = createContext(null);
+
+// Helper: decode JWT payload (không cần thư viện ngoài)
+function decodeJwtPayload(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+            atob(base64).split('').map(c =>
+                '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+            ).join('')
+        );
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        return null;
+    }
+}
+
+// Helper: chuẩn hoá user object từ BE → FE
+function normalizeUser(raw) {
+    if (!raw) return raw;
+    // Chuẩn hoá UUID: thay khoảng trắng bằng dấu gạch ngang
+    let id = raw.id || raw.user_id;
+    if (id && typeof id === 'string') {
+        id = id.replace(/\s+/g, '-');
+    }
+    return {
+        ...raw,
+        id: id,
+        user_id: id,
+        url_avt: raw.avatar || raw.url_avt,
+    };
+}
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Khôi phục user từ localStorage khi app khởi động
-        const savedUser = localStorage.getItem("user");
-        const token = localStorage.getItem("access_token");
-        if (savedUser && token) {
-            setUser(JSON.parse(savedUser));
-        }
-        setLoading(false);
+        const initAuth = async () => {
+            const savedUser = localStorage.getItem("user");
+            const token = localStorage.getItem("access_token");
+            if (savedUser && token) {
+                let parsed = JSON.parse(savedUser);
+
+                // AUTO-REPAIR: nếu user cũ thiếu user_id, decode JWT và fetch lại profile
+                if (!parsed.user_id && !parsed.id) {
+                    const payload = decodeJwtPayload(token);
+                    const userId = payload?.sub || payload?.user_id || payload?.id;
+                    if (userId) {
+                        const fullProfile = await fetchFullProfile(userId);
+                        if (fullProfile) {
+                            parsed = fullProfile;
+                            localStorage.setItem("user", JSON.stringify(parsed));
+                        } else {
+                            parsed = { ...parsed, user_id: userId };
+                            localStorage.setItem("user", JSON.stringify(parsed));
+                        }
+                    }
+                }
+
+                setUser(parsed);
+            }
+            setLoading(false);
+        };
+        initAuth();
     }, []);
 
+    // Lấy đầy đủ profile từ BE bằng user id
+    const fetchFullProfile = async (userId) => {
+        try {
+            const profileRes = await axiosClient.get(`/users/${userId}`);
+            const profileData = profileRes.data || profileRes;
+            return normalizeUser(profileData);
+        } catch (e) {
+            console.warn("Không lấy được profile sau login:", e);
+            return null;
+        }
+    };
+
+    // [API 2.2] Login
     const login = async (credentials) => {
         const res = await authService.login(credentials);
-        // Hỗ trợ cả 2 trường hợp BE trả về { data: {...} } hoặc trả thẳng { access_token, user }
-        const access_token = res.access_token || res.data?.access_token;
-        const refresh_token = res.refresh_token || res.data?.refresh_token;
-        const loggedInUser = res.user || res.data?.user || res; // Nếu BE trả gộp thì res chính là user
 
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
+        const data = res.data || res;
+        const access_token = data.access_token || res.access_token;
+        const refresh_token = data.refresh_token || res.refresh_token;
+
+        if (access_token) localStorage.setItem("access_token", access_token);
+        if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
+
+        // Bước 1: Lấy userId từ response login (nếu BE trả kèm user)
+        let loggedInUser = data.user ? normalizeUser(data.user) : null;
+        let userId = loggedInUser?.user_id;
+
+        // Bước 2: Nếu response login KHÔNG có user → decode JWT để lấy userId
+        if (!userId && access_token) {
+            const payload = decodeJwtPayload(access_token);
+            // JWT thường chứa sub (subject = userId) hoặc user_id hoặc id
+            userId = payload?.sub || payload?.user_id || payload?.id;
+        }
+
+        // Bước 3: Gọi GET /users/{id} để lấy TOÀN BỘ thông tin profile
+        if (userId) {
+            const fullProfile = await fetchFullProfile(userId);
+            if (fullProfile) {
+                loggedInUser = fullProfile;
+            } else if (!loggedInUser) {
+                // Fallback: tạo user tạm từ JWT
+                loggedInUser = normalizeUser({ id: userId, username: credentials.username });
+            }
+        } else if (!loggedInUser) {
+            // Fallback cuối cùng
+            loggedInUser = { username: credentials.username };
+        }
+
         localStorage.setItem("user", JSON.stringify(loggedInUser));
         setUser(loggedInUser);
         return loggedInUser;
     };
 
-    const register = async (data) => {
-        const res = await authService.register(data);
-        // BE chỉ trả về object User (không có data wrap, không có token) theo như test Postman
-        // Do đó ta sẽ không set token vào localStorage ở bước này.
-        return res;
+    // [API 2.1] Register
+    const register = async (dataPayload) => {
+        const res = await authService.register(dataPayload);
+
+        const data = res.data || res;
+        const access_token = data.access_token || res.access_token;
+        const refresh_token = data.refresh_token || res.refresh_token;
+
+        if (access_token) localStorage.setItem("access_token", access_token);
+        if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
+
+        let loggedInUser = data.user ? normalizeUser(data.user) : null;
+        let userId = loggedInUser?.user_id;
+
+        if (!userId && access_token) {
+            const payload = decodeJwtPayload(access_token);
+            userId = payload?.sub || payload?.user_id || payload?.id;
+        }
+
+        if (userId) {
+            const fullProfile = await fetchFullProfile(userId);
+            if (fullProfile) loggedInUser = fullProfile;
+            else if (!loggedInUser) loggedInUser = normalizeUser({ id: userId, username: dataPayload.username });
+        } else if (!loggedInUser) {
+            loggedInUser = normalizeUser(data);
+        }
+
+        localStorage.setItem("user", JSON.stringify(loggedInUser));
+        setUser(loggedInUser);
+        return loggedInUser;
     };
 
     const logout = async () => {

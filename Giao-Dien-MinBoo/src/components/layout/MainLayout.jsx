@@ -154,16 +154,16 @@ export default function MainLayout({ children }) {
                         {!collapsed && !showSearch && <span className="text-sm">Thêm</span>}
                     </button>
 
-                    <Link to={`/profile/${user?.user_id}`}
+                    <Link to={`/profile/${user?.user_id || user?.id || 'me'}`}
                         className="flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-gray-100 transition-colors">
                         <img
-                            src={user?.url_avt || `https://ui-avatars.com/api/?name=${user?.name}&background=random`}
+                            src={user?.url_avt || user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || user?.username || 'User'}&background=random`}
                             className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                            alt={user?.name}
+                            alt={user?.name || 'User'}
                         />
                         {!collapsed && !showSearch && (
                             <div className="text-left">
-                                <p className="text-sm font-semibold truncate w-32">{user?.username}</p>
+                                <p className="text-sm font-semibold truncate w-32">{user?.username || user?.name || 'Người dùng'}</p>
                             </div>
                         )}
                     </Link>

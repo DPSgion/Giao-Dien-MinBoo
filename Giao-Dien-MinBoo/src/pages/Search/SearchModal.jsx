@@ -32,8 +32,29 @@ export default function SearchModal({ onClose }) {
         setLoading(true);
         try {
             const res = await userService.searchUsers({ q, page: 1, limit: 20 });
-            setResults(res.data.users || []);
-        } catch (_) { } finally { setLoading(false); }
+            const payload = res.data || res;
+            
+            // BE có thể trả về mảng trực tiếp, hoặc { users: [...] }, hoặc { content: [...] } (Spring Boot Page)
+            let userList = [];
+            if (Array.isArray(payload)) {
+                userList = payload;
+            } else {
+                userList = payload.users || payload.content || [];
+            }
+
+            // Đồng bộ key do API thực tế dùng id, avatar
+            const mappedUsers = userList.map(u => ({
+                ...u,
+                user_id: u.id || u.user_id,
+                url_avt: u.avatar || u.url_avt,
+            }));
+
+            setResults(mappedUsers);
+        } catch (err) {
+            console.error("Search API Error:", err);
+            // Hiện thử thông báo lỗi để debug xem BE trả về cái gì (404 Not Found hay 400 Bad Request)
+            alert("Lỗi từ máy chủ: " + (err?.response?.data?.message || err.message || "Endpoint không hợp lệ"));
+        } finally { setLoading(false); }
     };
 
     const saveRecent = (user) => {
