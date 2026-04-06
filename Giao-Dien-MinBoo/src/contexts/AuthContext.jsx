@@ -19,22 +19,23 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (credentials) => {
         const res = await authService.login(credentials);
-        const { user, access_token, refresh_token } = res.data;
+        // Hỗ trợ cả 2 trường hợp BE trả về { data: {...} } hoặc trả thẳng { access_token, user }
+        const access_token = res.access_token || res.data?.access_token;
+        const refresh_token = res.refresh_token || res.data?.refresh_token;
+        const loggedInUser = res.user || res.data?.user || res; // Nếu BE trả gộp thì res chính là user
+
         localStorage.setItem("access_token", access_token);
         localStorage.setItem("refresh_token", refresh_token);
-        localStorage.setItem("user", JSON.stringify(user));
-        setUser(user);
-        return user;
+        localStorage.setItem("user", JSON.stringify(loggedInUser));
+        setUser(loggedInUser);
+        return loggedInUser;
     };
 
     const register = async (data) => {
         const res = await authService.register(data);
-        const { user, access_token, refresh_token } = res.data;
-        localStorage.setItem("access_token", access_token);
-        localStorage.setItem("refresh_token", refresh_token);
-        localStorage.setItem("user", JSON.stringify(user));
-        setUser(user);
-        return user;
+        // BE chỉ trả về object User (không có data wrap, không có token) theo như test Postman
+        // Do đó ta sẽ không set token vào localStorage ở bước này.
+        return res;
     };
 
     const logout = async () => {

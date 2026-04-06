@@ -10,7 +10,18 @@ const authService = {
     // Body: { name, username, password, email, sdt, birth?, sex?, address? }
     // Response 201: { success, data: { user, access_token, refresh_token } }
     // ============================================================
-    register: (data) => axiosClient.post("/auth/register", data),
+    register: (data) => {
+        const payload = { ...data };
+        if (payload.sdt) {
+            payload.phone = payload.sdt;
+            delete payload.sdt;
+        }
+        if (payload.sex === 'male') payload.sex = 1;
+        else if (payload.sex === 'female') payload.sex = 0;
+        else payload.sex = 2;
+        
+        return axiosClient.post("/auth/register", payload);
+    },
 
     // ============================================================
     // [API 2.2] POST /auth/login - Đăng nhập
@@ -18,25 +29,7 @@ const authService = {
     // Body: { username, password }
     // Response 200: { success, data: { user, access_token, refresh_token } }
     // ============================================================
-    login: async (data) => {
-        // [MOCK] Tự động đăng nhập
-        return new Promise(resolve => setTimeout(() => {
-            resolve({
-                data: {
-                    user: {
-                        user_id: '7d99d30e-caeb-4e3a-aa81-cc5a7c58a1d2',
-                        name: 'Tài Nguyễn (Admin Test)',
-                        username: data.username || 'admin',
-                        url_avt: 'https://ui-avatars.com/api/?name=Tai&background=7c3aed&color=fff',
-                        role: 1, 
-                        is_active: true
-                    },
-                    access_token: 'fake',
-                    refresh_token: 'fake'
-                }
-            });
-        }, 800));
-    },
+    login: (data) => axiosClient.post("/auth/login", data),
 
     // ============================================================
     // [API 2.3] POST /auth/refresh-token - Lấy token mới

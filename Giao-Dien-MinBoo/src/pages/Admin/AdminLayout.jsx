@@ -196,10 +196,10 @@ export default function AdminLayout({ pendingReports = 0 }) {
               style={
                 isActive(item)
                   ? {
-                      background:
-                        'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,70,229,0.2))',
-                      border: '1px solid rgba(124,58,237,0.3)',
-                    }
+                    background:
+                      'linear-gradient(135deg, rgba(124,58,237,0.3), rgba(79,70,229,0.2))',
+                    border: '1px solid rgba(124,58,237,0.3)',
+                  }
                   : {}
               }
             >

@@ -159,7 +159,7 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/Giao-Dien-MinBoo">
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

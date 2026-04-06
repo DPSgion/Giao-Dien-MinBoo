@@ -7,10 +7,11 @@ export default defineConfig({
     react(),
     tailwindcss(),
   ],
+  base: '/Giao-Dien-MinBoo/',  // Bắt buộc cho GitHub Pages (tên repo)
   server: {
-    port: 3000,           // bỏ open: true → không tự mở tab nữa
+    port: 3000,
   },
-  appType: 'spa',         // fix lỗi refresh / gõ URL thẳng
+  appType: 'spa',
 })
 
 //server: {

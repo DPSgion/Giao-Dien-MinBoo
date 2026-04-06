@@ -1,8 +1,6 @@
 import axios from "axios";
 
-// ============================================================
 // BASE URL - Backend Java Spring Boot
-// ============================================================
 const BASE_URL = "https://www.minboo-be.io.vn";
 
 const axiosClient = axios.create({

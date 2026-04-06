@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>MinBoo</title>
+  <script>
+    // GitHub Pages không hỗ trợ SPA routing (React Router).
+    // File này sẽ redirect tất cả các URL về index.html
+    // để React Router xử lý đúng route.
+    var pathSegmentsToKeep = 1; // Giữ lại 1 segment (/Giao-Dien-MinBoo/)
+    var l = window.location;
+    l.replace(
+      l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
+      (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
+      l.hash
+    );
+  </script>
+</head>
+<body>
+</body>
+</html>

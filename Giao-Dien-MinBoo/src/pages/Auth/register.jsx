@@ -24,7 +24,8 @@ export default function Register() {
             // Bắt buộc: name, username, password, email, sdt
             // Tùy chọn: birth, sex, address
             await register(form);
-            navigate("/");
+            alert("Đăng ký thành công! Hãy đăng nhập bằng tài khoản vừa tạo.");
+            navigate("/login");
         } catch (err) {
             const code = err?.error_code;
             if (code === "USERNAME_EXISTS") setError("Tên đăng nhập đã tồn tại");

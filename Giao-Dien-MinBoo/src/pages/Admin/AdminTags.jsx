@@ -14,7 +14,7 @@ export default function AdminTags() {
     adminService
       .getTags()
       .then((res) => setTags(res.data?.tags || []))
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoading(false));
   }, []);
 
