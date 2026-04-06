@@ -156,11 +156,19 @@ export default function MainLayout({ children }) {
 
                     <Link to={`/profile/${user?.user_id || user?.id || 'me'}`}
                         className="flex items-center gap-4 px-3 py-3 rounded-lg hover:bg-gray-100 transition-colors">
-                        <img
-                            src={user?.url_avt || user?.avatar || `https://ui-avatars.com/api/?name=${user?.name || user?.username || 'User'}&background=random`}
-                            className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-                            alt={user?.name || 'User'}
-                        />
+                        {(user?.url_avt || user?.avatar) && !(user?.url_avt || user?.avatar || "").includes("default-avatar-url") ? (
+                            <img
+                                src={user?.url_avt || user?.avatar}
+                                className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+                                alt={user?.name || 'User'}
+                            />
+                        ) : (
+                            <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="#8e8e8e">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                </svg>
+                            </div>
+                        )}
                         {!collapsed && !showSearch && (
                             <div className="text-left">
                                 <p className="text-sm font-semibold truncate w-32">{user?.username || user?.name || 'Người dùng'}</p>
