@@ -73,7 +73,8 @@ export const AuthProvider = ({ children }) => {
     // Lấy đầy đủ profile từ BE bằng user id
     const fetchFullProfile = async (userId) => {
         try {
-            const profileRes = await axiosClient.get(`/users/${userId}`);
+            // Lấy chính xác user bằng /user/me
+            const profileRes = await axiosClient.get(`/user/me`);
             const profileData = profileRes.data || profileRes;
             return normalizeUser(profileData);
         } catch (e) {
@@ -87,8 +88,8 @@ export const AuthProvider = ({ children }) => {
         const res = await authService.login(credentials);
 
         const data = res.data || res;
-        const access_token = data.access_token || res.access_token;
-        const refresh_token = data.refresh_token || res.refresh_token;
+        const access_token = data.accessToken || data.access_token || res.accessToken || res.access_token;
+        const refresh_token = data.refreshToken || data.refresh_token || res.refreshToken || res.refresh_token;
 
         if (access_token) localStorage.setItem("access_token", access_token);
         if (refresh_token) localStorage.setItem("refresh_token", refresh_token);
@@ -128,8 +129,8 @@ export const AuthProvider = ({ children }) => {
         const res = await authService.register(dataPayload);
 
         const data = res.data || res;
-        const access_token = data.access_token || res.access_token;
-        const refresh_token = data.refresh_token || res.refresh_token;
+        const access_token = data.accessToken || data.access_token || res.accessToken || res.access_token;
+        const refresh_token = data.refreshToken || data.refresh_token || res.refreshToken || res.refresh_token;
 
         if (access_token) localStorage.setItem("access_token", access_token);
         if (refresh_token) localStorage.setItem("refresh_token", refresh_token);

@@ -35,7 +35,9 @@ export default function Profile() {
         setLoading(true);
         setError(null);
         try {
-            const res = await userService.getUser(targetId);
+            const res = isMe || targetId === "me" 
+                ? await userService.getCurrentUser() 
+                : await userService.getUser(targetId);
             const raw = res.data?.data || res.data || res;
             const profileData = mapBeToFe(raw);
             setProfile(profileData);

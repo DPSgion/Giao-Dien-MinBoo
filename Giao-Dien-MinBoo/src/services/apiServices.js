@@ -1,49 +1,71 @@
 import axiosClient from "./axiosClient";
 
 // ============================================================
-// USER SERVICE - [API 3] Quản lý thông tin người dùng
+// USER SERVICE - Quản lý thông tin người dùng
 // ============================================================
 export const userService = {
-    // [API 3.1] GET /users/{user_id}
+    // GET /users - Lấy danh sách tất cả user
+    getAllUsers: () => axiosClient.get("/users"),
+
+    // GET /users/{id} - Lấy thông tin 1 user
     getUser: (userId) => axiosClient.get(`/users/${userId}`),
 
-    // [API 3.2] PATCH /users/me
-    updateProfile: (data) => axiosClient.patch("/users/me", data),
+    // GET /user/me - Lấy thông tin bản thân
+    getCurrentUser: () => axiosClient.get("/user/me"),
 
-    // [API 3.3] POST /users/me/avatar (multipart/form-data)
+    updateProfile: (data) => {
+
+        if (data instanceof FormData) {
+            return axiosClient.put("/user/me", data, {
+                headers: { "Content-Type": "multipart/form-data" },
+            });
+        }
+
+        return axiosClient.put("/user/me", data);
+    },
+
+
     uploadAvatar: (formData) =>
         axiosClient.post("/users/me/avatar", formData, {
             headers: { "Content-Type": "multipart/form-data" },
         }),
 
-    // [API 3.4] GET /users/search
+    // PATCH /users/me/password - Đổi mật khẩu
+    changePassword: (data) => axiosClient.patch("/users/me/password", data),
+
+    // GET /users/search - Tìm kiếm user
     searchUsers: (params) => axiosClient.get("/users/search", { params }),
 };
 
 // ============================================================
-// FRIEND SERVICE - [API 4] Quản lý bạn bè
+// FRIEND SERVICE - Quản lý bạn bè
 // ============================================================
 export const friendService = {
-    // [API 4.1] GET /users/{user_id}/friends
-    getFriends: (userId, params) =>
-        axiosClient.get(`/users/${userId}/friends`, { params }),
+    // GET /friends - Danh sách bạn bè
+    getFriends: () => axiosClient.get("/friends"),
 
-    // [API 4.2] POST /friends/requests
-    sendRequest: (data) => axiosClient.post("/friends/requests", data),
+    // POST /friends/request/{friendId} - Gửi lời mời kết bạn
+    // Body: { message: "Chào bạn, kết bạn nhé!" }
+    sendRequest: (friendId, message) =>
+        axiosClient.post(`/friends/request/${friendId}`, { message: message || "" }),
 
-    // [API 4.3] PATCH /friends/requests/{id}/accept
-    acceptRequest: (friendRequestId) =>
-        axiosClient.patch(`/friends/requests/${friendRequestId}/accept`),
+    // GET /friends/requests/send - Xem lời mời đã gửi
+    getSentRequests: () => axiosClient.get("/friends/requests/send"),
 
-    // [API 4.4] DELETE /friends/requests/{id}
-    deleteRequest: (friendRequestId) =>
-        axiosClient.delete(`/friends/requests/${friendRequestId}`),
-
-    // [API 4.5] DELETE /friends/{user_id}
-    unfriend: (userId) => axiosClient.delete(`/friends/${userId}`),
-
-    // [API 4.6] GET /friends/requests/pending
+    // GET /friends/requests/pending - Xem lời mời nhận được
     getPendingRequests: () => axiosClient.get("/friends/requests/pending"),
+
+    // POST /friends/requests/accept/{requestId} - Chấp nhận lời mời
+    acceptRequest: (requestId) =>
+        axiosClient.post(`/friends/requests/accept/${requestId}`),
+
+    // POST /friends/requests/reject/{requestId} - Từ chối lời mời
+    rejectRequest: (requestId) =>
+        axiosClient.post(`/friends/requests/reject/${requestId}`),
+
+    // POST /friends/unfriend/{friendId} - Hủy kết bạn
+    unfriend: (friendId) =>
+        axiosClient.post(`/friends/unfriend/${friendId}`),
 };
 
 // ============================================================
