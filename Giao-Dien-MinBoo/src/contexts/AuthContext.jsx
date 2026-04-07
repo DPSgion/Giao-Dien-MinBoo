@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
 import axiosClient from "../services/axiosClient";
-
+import { userService } from "../services/apiServices";
 const AuthContext = createContext(null);
 
 // Helper: decode JWT payload (không cần thư viện ngoài)
@@ -73,9 +73,9 @@ export const AuthProvider = ({ children }) => {
     // Lấy đầy đủ profile từ BE bằng user id
     const fetchFullProfile = async (userId) => {
         try {
-            // Lấy chính xác user bằng /user/me
-            const profileRes = await axiosClient.get(`/user/me`);
-            const profileData = profileRes.data || profileRes;
+            // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
+            const profileRes = await userService.getCurrentUser();
+            const profileData = profileRes.data?.data || profileRes.data || profileRes;
             return normalizeUser(profileData);
         } catch (e) {
             console.warn("Không lấy được profile sau login:", e);

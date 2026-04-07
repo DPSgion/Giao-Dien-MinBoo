@@ -7,11 +7,27 @@ export const userService = {
     // GET /users - Lấy danh sách tất cả user
     getAllUsers: () => axiosClient.get("/users"),
 
-    // GET /users/{id} - Lấy thông tin 1 user
-    getUser: (userId) => axiosClient.get(`/users/${userId}`),
+    // GET /users/{id} (Hỗ trợ cả username bằng cách tự động search & lấy ID)
+    getUser: async (userId) => {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+        if (isUUID) return axiosClient.get(`/users/${userId}`);
+        
+        // Nếu không phải UUID (vd: là username), gọi search API để bắt đúng người
+        const res = await axiosClient.get("/users", { params: { search: userId } });
+        const users = res?.content || res?.data || [];
+        const matchedUser = users.find(u => u.username === userId);
+        if (matchedUser) return { data: matchedUser }; // Giả lập response từ BE
+        throw new Error("User not found");
+    },
 
-    // GET /user/me - Lấy thông tin bản thân
-    getCurrentUser: () => axiosClient.get("/user/me"),
+    // FE Fetch profile không có API /user/me nên gọi getUser với Username lấy từ JWT
+    getCurrentUser: async () => {
+        const token = localStorage.getItem("access_token");
+        if (!token) throw new Error("No token");
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const username = payload?.sub; // BE lưu username trong sub
+        return userService.getUser(username);
+    },
 
     updateProfile: (data) => {
 
