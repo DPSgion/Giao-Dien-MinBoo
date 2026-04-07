@@ -28,7 +28,9 @@ export default function CreatePost() {
     const fetchTags = async () => {
         try {
             const res = await tagService.getAllTags();
-            setAllTags(res.data.tags || []);
+            // Backend trả về mảng trực tiếp hoặc nằm trong res.content tuỳ phiên bản
+            const fetchedTags = Array.isArray(res) ? res : (res?.content || res?.data?.tags || res?.data || []);
+            setAllTags(fetchedTags);
         } catch (_) { }
     };
 
@@ -81,33 +83,7 @@ export default function CreatePost() {
         } catch (error) {
             console.error("Create post error:", error);
             const errorMsg = typeof error === 'string' ? error : (error.message || error.data?.message || JSON.stringify(error));
-            const errStatus = error.status || error.statusCode;
-            
-            // Bắt lỗi 400 từ ContentModerationService.java ném ra
-            if (errStatus === 400 && (errorMsg.includes("vi phạm") || errorMsg.includes("nhạy cảm") || errorMsg.includes("cộng đồng"))) {
-                
-                // Lưu vào LocalStorage chờ admin duyệt (giả lập backend)
-                const pendingPost = {
-                    post_id: "pending-" + Date.now(),
-                    content: content,
-                    privacy: privacy,
-                    created_at: new Date().toISOString(),
-                    author: { name: "User", url_avt: "https://ui-avatars.com/api/?name=User" },
-                    url_img: imgBase64 || previewUrl || null,
-                    tags: selectedTags,
-                    // Giữ lại file gốc nếu Admin duyệt trong cùng một sesion (Mặc dù JSON stringify sẽ loại bỏ nó)
-                    // nhưng ta cần Base64 để hiển thị
-                };
-                
-                const existingPending = JSON.parse(localStorage.getItem("admin_pending_posts") || "[]");
-                existingPending.push(pendingPost);
-                localStorage.setItem("admin_pending_posts", JSON.stringify(existingPending));
-
-                alert("⚠️ Bài viết của bạn đang tạm thời bị khóa vì vi phạm tiêu chuẩn (AI phát hiện). Quản trị viên sẽ kiểm duyệt!");
-                navigate("/");
-            } else {
-                alert("Lỗi khi tạo bài viết: " + errorMsg);
-            }
+            alert("Đăng bài thất bại: " + errorMsg);
         } finally {
             setLoading(false);
         }

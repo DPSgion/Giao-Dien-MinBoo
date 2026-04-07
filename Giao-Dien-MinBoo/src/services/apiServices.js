@@ -90,46 +90,42 @@ export const friendService = {
         axiosClient.post(`/friends/unfriend/${friendId}`),
 };
 
-// ============================================================
-// POST SERVICE - [API 5] Quản lý bài viết
-// ============================================================
+
 export const postService = {
-    // [API 5.1] GET /posts/feed
+
     getFeed: (params) => axiosClient.get("/posts/feed", { params }),
 
-    // [API 5.2] GET /users/{user_id}/posts
+
     getUserPosts: (userId, params) =>
         axiosClient.get(`/users/${userId}/posts`, { params }),
 
-    // [API 5.3] POST /posts (multipart/form-data)
+
     createPost: (formData) =>
         axiosClient.post("/posts", formData, {
             headers: { "Content-Type": "multipart/form-data" },
         }),
 
-    // [API 5.4] PATCH /posts/{post_id}
+
     updatePost: (postId, data) => axiosClient.patch(`/posts/${postId}`, data),
 
-    // [API 5.5] DELETE /posts/{post_id}
+
     deletePost: (postId) => axiosClient.delete(`/posts/${postId}`),
 
-    // [API 5.6] POST /posts/{post_id}/report
+
     reportPost: (postId, data) =>
         axiosClient.post(`/posts/${postId}/report`, data),
 
-    // Lấy 1 bài viết cụ thể (nếu BE có hỗ trợ)
+
     getPost: (postId) => axiosClient.get(`/posts/${postId}`),
 };
 
-// ============================================================
-// COMMENT SERVICE - [API 6] Quản lý bình luận
-// ============================================================
+
 export const commentService = {
-    // [API 6.1] GET /posts/{post_id}/comments
+
     getComments: (postId, params) =>
         axiosClient.get(`/posts/${postId}/comments`, { params }),
 
-    // [API 6.2] POST /posts/{post_id}/comments
+
     addComment: (postId, data) =>
         axiosClient.post(`/posts/${postId}/comments`, data),
 
@@ -138,19 +134,17 @@ export const commentService = {
         axiosClient.delete(`/posts/${postId}/comments/${commentId}`),
 };
 
-// ============================================================
-// REACTION SERVICE - [API 7] Tương tác (Like, Love, Haha, Sad, Angry)
-// ============================================================
+
 export const reactionService = {
-    // [API 7.1] POST /posts/{post_id}/reactions
+
     reactPost: (postId, type) =>
         axiosClient.post(`/posts/${postId}/reactions`, { type }),
 
-    // [API 7.2] DELETE /posts/{post_id}/reactions
+
     removeReaction: (postId) =>
         axiosClient.delete(`/posts/${postId}/reactions`),
 
-    // [API 7.3] GET /posts/{post_id}/reactions
+
     getReactions: (postId, params) =>
         axiosClient.get(`/posts/${postId}/reactions`, { params }),
 };
