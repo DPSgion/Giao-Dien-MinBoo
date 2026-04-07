@@ -190,6 +190,7 @@ export default function Profile() {
         try {
             await friendService.sendRequest(targetId);
             setFriendStatus(1);
+            window.dispatchEvent(new Event("friend_request_changed"));
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message || "";
             if (msg.includes("Data already exists") || msg.includes("violates system constraints")) {
@@ -201,10 +202,11 @@ export default function Profile() {
     };
 
     const handleUnfriend = async () => {
-        if (!confirm("Hủy kết bạn?")) return;
+        if (!confirm("Hủy theo dõi / kết bạn?")) return;
         try {
             await friendService.unfriend(targetId);
             setFriendStatus(0);
+            window.dispatchEvent(new Event("friend_request_changed"));
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message;
             alert("Lỗi: " + msg);
@@ -220,6 +222,7 @@ export default function Profile() {
             if (req) {
                 await friendService.acceptRequest(req.requestId);
                 setFriendStatus(2);
+                window.dispatchEvent(new Event("friend_request_changed"));
             }
         } catch (err) {
             alert("Lỗi: " + (err?.response?.data?.message || err?.message));
@@ -234,6 +237,7 @@ export default function Profile() {
             if (req) {
                 await friendService.rejectRequest(req.requestId);
                 setFriendStatus(0);
+                window.dispatchEvent(new Event("friend_request_changed"));
             }
         } catch (err) {
             alert("Lỗi: " + (err?.response?.data?.message || err?.message));

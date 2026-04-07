@@ -28,9 +28,21 @@ export default function MainLayout({ children }) {
             websocketService.on("new_message", () => {
                 setUnread((prev) => ({ ...prev, messages: prev.messages + 1 }));
             });
+            // [WS Server -> Client] new_friend_request - Có người gửi kết bạn
+            websocketService.on("new_friend_request", () => {
+                fetchUnreadCount(); // Gọi lại để đồng bộ
+            });
         }
         fetchUnreadCount();
-        return () => websocketService.disconnect();
+        
+        // Cập nhật số đếm trực tiếp khi FE gửi đi hoặc xử lý lời mời
+        const handleLocalTrigger = () => fetchUnreadCount();
+        window.addEventListener("friend_request_changed", handleLocalTrigger);
+        
+        return () => {
+            websocketService.disconnect();
+            window.removeEventListener("friend_request_changed", handleLocalTrigger);
+        };
     }, []);
 
     // [API 11.4] GET /notifications/unread-count

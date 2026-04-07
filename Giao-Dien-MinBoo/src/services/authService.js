@@ -15,7 +15,6 @@ const authService = {
         if (payload.sex === 'male') payload.sex = "1";
         else if (payload.sex === 'female') payload.sex = "0";
         else payload.sex = "2";
-        
         return axiosClient.post("/auth/register", payload);
     },
 

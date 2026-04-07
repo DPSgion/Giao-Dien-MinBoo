@@ -87,6 +87,7 @@ export default function Friends() {
                 received: prev.received.filter((r) => r.friend_request_id !== friendRequestId),
             }));
             setFriends((prev) => [...prev, { ...user }]);
+            window.dispatchEvent(new Event("friend_request_changed"));
         } catch (_) { }
     };
 
@@ -108,6 +109,7 @@ export default function Friends() {
                     received: prev.received.filter((r) => r.friend_request_id !== friendRequestId),
                 }));
             }
+            window.dispatchEvent(new Event("friend_request_changed"));
         } catch (_) { }
     };
 
