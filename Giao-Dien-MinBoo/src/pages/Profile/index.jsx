@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { userService, postService, friendService } from "../../services/apiServices";
+import { userService, postService, friendService, messageService } from "../../services/apiServices";
 
 export default function Profile() {
     const { userId } = useParams();
+    const navigate = useNavigate();
     const { user: me, updateUser } = useAuth();
     const [profile, setProfile] = useState(null);
     const [posts, setPosts] = useState([]);
@@ -20,9 +21,7 @@ export default function Profile() {
     const [friendStatus, setFriendStatus] = useState(null); // 0=none, 1=sent, 2=friends, 3=received
     const fileRef = useRef(null);
 
-    const isMe = !userId || userId === me?.user_id || userId === me?.id || userId === "me";
-
-    // targetId: dùng UUID nếu có, nếu không dùng "me" → BE sẽ tự resolve
+    const isMe = !userId || userId === "me" || userId === me?.user_id || String(userId) === String(me?.id);
     const targetId = isMe ? (me?.user_id || me?.id || "me") : userId;
 
     useEffect(() => {
@@ -35,13 +34,10 @@ export default function Profile() {
     // ===== CHECK FRIEND STATUS from BE =====
     const checkFriendStatus = async () => {
         const myId = me?.user_id || me?.id;
-        alert("STEP 0: checkFriendStatus started. userId=" + userId);
 
         // Check sent requests first
         try {
-            alert("STEP 1: calling getSentRequests...");
             const sentRes = await friendService.getSentRequests();
-            alert("STEP 2: getSentRequests returned: " + JSON.stringify(sentRes));
             const sentList = Array.isArray(sentRes) ? sentRes : (sentRes?.data || []);
             for (const r of sentList) {
                 if (r.receiverId === userId) { setFriendStatus(1); return; }
@@ -208,6 +204,31 @@ export default function Profile() {
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message;
             alert("Lỗi: " + msg);
+        }
+    };
+
+    const handleMessage = async () => {
+        try {
+            // Chắc chắn gửi chuỗi (UUID) lên server để tránh lỗi parse ID số
+            const res = await messageService.createConversation(String(targetId));
+            const data = res.data?.data || res.data || res;
+            const convId = data?.conversation_id || data?.id;
+
+            if (convId) {
+                navigate(`/messages/${convId}`);
+            } else {
+                navigate(`/messages`);
+            }
+        } catch (err) {
+            console.error("handleMessage Error:", err);
+            const status = err?.response?.status || err?.status;
+            const msg = err?.response?.data?.message || err?.message || "";
+
+            if (status === 500) {
+                alert("Không thể nhắn tin: Có lỗi từ máy chủ. Có thể bạn cần kết bạn với người này trước khi nhắn tin.");
+            } else {
+                alert("Lỗi khi tạo/lấy cuộc trò chuyện: " + msg);
+            }
         }
     };
 
@@ -461,8 +482,11 @@ export default function Profile() {
                             </div>
                         ) : (
                             <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={handleMessage} style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                    Nhắn tin
+                                </button>
                                 {(friendStatus === null || friendStatus === 0) && (
-                                    <button onClick={handleAddFriend} style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                    <button onClick={handleAddFriend} style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                                         Theo dõi
                                     </button>
                                 )}
@@ -472,14 +496,9 @@ export default function Profile() {
                                     </button>
                                 )}
                                 {friendStatus === 2 && (
-                                    <>
-                                        <button onClick={handleUnfriend} style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                                            Đang theo dõi
-                                        </button>
-                                        <button style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
-                                            Nhắn tin
-                                        </button>
-                                    </>
+                                    <button onClick={handleUnfriend} style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                        Đang theo dõi
+                                    </button>
                                 )}
                                 {friendStatus === 3 && (
                                     <>

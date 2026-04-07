@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { friendService } from "../../services/apiServices";
+import { friendService, messageService } from "../../services/apiServices";
 
 export default function Friends() {
     const [tab, setTab] = useState("friends");
@@ -10,6 +10,7 @@ export default function Friends() {
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     useEffect(() => {
         if (tab === "friends") fetchFriends();
@@ -28,7 +29,8 @@ export default function Friends() {
             const rawFriends = Array.isArray(res) ? res : (res?.data || []);
             const myId = user?.user_id || user?.id;
             const mapped = rawFriends.map(f => {
-                const isRequester = f.requesterId === myId;
+                const myId = user?.user_id || user?.id;
+                const isRequester = f.requesterId === myId || String(f.requesterId) === String(myId);
                 return {
                     user_id: isRequester ? f.receiverId : f.requesterId,
                     name: isRequester ? f.receiverName : f.requesterName,
@@ -123,6 +125,21 @@ export default function Friends() {
         } catch (_) { }
     };
 
+    const handleMessage = async (userId) => {
+        try {
+            const res = await messageService.createConversation(userId);
+            const convId = res.data?.data?.conversation_id || res.data?.conversation_id || res.data?.id;
+            if (convId) {
+                navigate(`/messages/${convId}`);
+            } else {
+                navigate(`/messages`);
+            }
+        } catch (err) {
+            console.error("handleMessage Error:", err);
+            alert("Lỗi khi tạo/lấy cuộc trò chuyện: " + (err?.response?.data?.message || err?.message));
+        }
+    };
+
     const filteredFriends = friends.filter((f) =>
         f.name.toLowerCase().includes(search.toLowerCase()) ||
         (f.address || "").toLowerCase().includes(search.toLowerCase())
@@ -203,11 +220,18 @@ export default function Friends() {
                                             <p className="text-xs text-gray-400 mt-0.5">{friend.address}</p>
                                         )}
                                     </div>
-                                    <button
-                                        onClick={() => handleUnfriend(friend.user_id)}
-                                        className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-1.5 rounded-lg transition-colors">
-                                        Hủy kết bạn
-                                    </button>
+                                    <div className="flex w-full gap-2 mt-1">
+                                        <button
+                                            onClick={() => handleMessage(friend.user_id)}
+                                            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                            Nhắn tin
+                                        </button>
+                                        <button
+                                            onClick={() => handleUnfriend(friend.user_id)}
+                                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold py-1.5 rounded-lg transition-colors">
+                                            Hủy
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>

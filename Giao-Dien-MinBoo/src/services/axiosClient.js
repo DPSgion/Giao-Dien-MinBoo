@@ -19,6 +19,24 @@ axiosClient.interceptors.request.use(
         if (token) {
             config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Tự động đính kèm user-id header cho backend Java nhận diện
+        const savedUser = localStorage.getItem("user");
+        if (savedUser) {
+            try {
+                const parsed = JSON.parse(savedUser);
+                let userId = parsed.user_id || parsed.id;
+                
+                // Chỉ set header nếu userId hợp lệ và CHỈ chứa ký tự ASCII (ISO-8859-1)
+                // để tránh lỗi "String contains non ISO-8859-1 code point" trên trình duyệt
+                if (userId && typeof userId === 'string' && /^[\x00-\x7F]*$/.test(userId)) {
+                    config.headers["user-id"] = userId;
+                }
+            } catch (e) {
+                console.error("Lỗi parse user từ localStorage:", e);
+            }
+        }
+
         return config;
     },
     (error) => Promise.reject(error)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router-dom";
-import { userService, friendService } from "../../services/apiServices";
+import { Link, useNavigate } from "react-router-dom";
+import { userService, friendService, messageService } from "../../services/apiServices";
 
 export default function SearchModal({ onClose }) {
     const [query, setQuery] = useState("");
@@ -11,6 +11,7 @@ export default function SearchModal({ onClose }) {
     });
     const inputRef = useRef(null);
     const debounceRef = useRef(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
         inputRef.current?.focus();
@@ -33,7 +34,7 @@ export default function SearchModal({ onClose }) {
         try {
             const res = await userService.searchUsers({ q, page: 1, limit: 20 });
             const payload = res.data || res;
-            
+
             // BE có thể trả về mảng trực tiếp, hoặc { users: [...] }, hoặc { content: [...] } (Spring Boot Page)
             let userList = [];
             if (Array.isArray(payload)) {
@@ -42,11 +43,11 @@ export default function SearchModal({ onClose }) {
                 userList = payload.users || payload.content || [];
             }
 
-            // Đồng bộ key do API thực tế dùng id, avatar
+            // Đồng bộ key do API thực tế dùng id, avatar. Ưu tiên user_id (UUID)
             const mappedUsers = userList.map(u => ({
                 ...u,
-                user_id: u.id || u.user_id,
-                url_avt: u.avatar || u.url_avt,
+                user_id: u.user_id || u.id,
+                url_avt: u.url_avt || u.avatar,
             }));
 
             setResults(mappedUsers);
@@ -82,6 +83,24 @@ export default function SearchModal({ onClose }) {
                 prev.map((u) => u.user_id === userId ? { ...u, is_friend: true } : u)
             );
         } catch (_) { }
+    };
+
+    const handleMessage = async (e, userId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            const res = await messageService.createConversation(userId);
+            const convId = res.data?.data?.conversation_id || res.data?.conversation_id || res.data?.id;
+            if (convId) {
+                navigate(`/messages/${convId}`);
+            } else {
+                navigate(`/messages`);
+            }
+            onClose();
+        } catch (err) {
+            console.error("handleMessage Error:", err);
+            alert("Lỗi khi tạo/lấy cuộc trò chuyện: " + (err?.response?.data?.message || err?.message));
+        }
     };
 
     const displayList = query.trim() ? results : recent;
@@ -180,10 +199,15 @@ export default function SearchModal({ onClose }) {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                            <button
+                                onClick={(e) => handleMessage(e, user.user_id)}
+                                className="bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
+                                Nhắn tin
+                            </button>
                             {!user.is_friend && (
                                 <button
                                     onClick={(e) => handleAddFriend(e, user.user_id)}
-                                    className="bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
+                                    className="bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-lg hover:bg-gray-200 transition-colors">
                                     Theo dõi
                                 </button>
                             )}

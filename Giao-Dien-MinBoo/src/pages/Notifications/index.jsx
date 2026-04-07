@@ -114,12 +114,13 @@ export default function Notifications() {
 
     // Navigate đến entity khi click thông báo
     const getNotificationLink = (noti) => {
-        if (noti._isFriendRequest) return `/profile/${noti.sender?.user_id}`;
+        const senderId = noti.sender?.user_id || noti.sender?.id;
+        if (noti._isFriendRequest) return `/profile/${senderId || 'me'}`;
         switch (noti.entity_type) {
             case "post": return `/post/${noti.entity_id}`;
-            case "user": return `/profile/${noti.entity_id}`;
+            case "user": return `/profile/${noti.entity_id || senderId}`;
             case "conversation": return `/messages/${noti.entity_id}`;
-            case "friend_request": return `/profile/${noti.sender?.user_id || noti.entity_id}`;
+            case "friend_request": return `/profile/${senderId || noti.entity_id}`;
             default: return "#";
         }
     };

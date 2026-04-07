@@ -13,7 +13,12 @@ export default function StoryBar() {
         const fetchFriends = async () => {
             try {
                 const res = await friendService.getFriends("me", { limit: 10 });
-                setFriends(res.data.friends || []);
+                const raw = res.data?.friends || res.data || res || [];
+                const mapped = (Array.isArray(raw) ? raw : []).map(f => ({
+                    ...f,
+                    user_id: f.user_id || f.id,
+                }));
+                setFriends(mapped);
             } catch (_) { }
         };
         fetchFriends();
