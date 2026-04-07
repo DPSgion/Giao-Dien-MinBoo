@@ -42,17 +42,19 @@ export default function AdminTags() {
     }
   };
 
+  const handleDelete = async (tagId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa tag này không? Người dùng sẽ không thể chọn tag này nữa.")) return;
+    try {
+      await adminService.deleteTag(tagId);
+      setTags(tags.filter(t => t.tag_id !== tagId));
+    } catch (e) {
+      alert("Lỗi khi xóa tag");
+    }
+  };
+
   const TAG_COLORS = [
-    '#7c3aed',
-    '#ec4899',
-    '#f59e0b',
-    '#10b981',
-    '#3b82f6',
-    '#ef4444',
-    '#8b5cf6',
-    '#06b6d4',
-    '#84cc16',
-    '#f97316',
+    '#7c3aed', '#ec4899', '#f59e0b', '#10b981', '#3b82f6',
+    '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16', '#f97316',
   ];
 
   return (
@@ -130,9 +132,6 @@ export default function AdminTags() {
             ✅ {success}
           </p>
         )}
-        <p className="text-xs mt-3" style={{ color: '#4b5563' }}>
-          Lưu ý: tag_name có ràng buộc UNIQUE — Backend trả 409 nếu trùng tên.
-        </p>
       </div>
 
       {/* Tags grid */}
@@ -166,7 +165,7 @@ export default function AdminTags() {
               return (
                 <div
                   key={tag.tag_id}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+                  className="group flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all relative"
                   style={{
                     background: color + '18',
                     color,
@@ -175,9 +174,14 @@ export default function AdminTags() {
                 >
                   <span>#</span>
                   <span>{tag.tag_name}</span>
-                  <span className="text-xs opacity-50 font-normal">
-                    ID:{tag.tag_id}
-                  </span>
+                  
+                  <button 
+                    onClick={() => handleDelete(tag.tag_id)}
+                    className="ml-2 w-5 h-5 flex items-center justify-center rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    title="Xóa Tag"
+                  >
+                    ×
+                  </button>
                 </div>
               );
             })}

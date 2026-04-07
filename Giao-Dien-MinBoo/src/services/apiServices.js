@@ -11,7 +11,7 @@ export const userService = {
     getUser: async (userId) => {
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
         if (isUUID) return axiosClient.get(`/users/${userId}`);
-        
+
         // Nếu không phải UUID (vd: là username), gọi search API để bắt đúng người
         const res = await axiosClient.get("/users", { params: { search: userId } });
         const users = res?.content || res?.data || [];
@@ -50,12 +50,12 @@ export const userService = {
     changePassword: (data) => axiosClient.patch("/users/me/password", data),
 
     // GET /users - Tìm kiếm user
-    searchUsers: (params) => axiosClient.get("/users", { 
-        params: { 
-            search: params.q, 
-            page: params.page ? params.page - 1 : 0, 
-            size: params.limit || 20 
-        } 
+    searchUsers: (params) => axiosClient.get("/users", {
+        params: {
+            search: params.q,
+            page: params.page ? params.page - 1 : 0,
+            size: params.limit || 20
+        }
     }),
 };
 

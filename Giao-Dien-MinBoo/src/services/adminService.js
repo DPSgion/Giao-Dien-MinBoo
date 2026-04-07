@@ -92,54 +92,67 @@ const delay = (ms = 400) => new Promise(resolve => setTimeout(resolve, ms));
 
 const adminService = {
   getStatistics: async () => {
-    await delay();
-    return {
-      data: {
-        total_users: mockUsers.length,
-        active_users: mockUsers.filter(u => u.is_active).length,
-        banned_users: mockUsers.filter(u => !u.is_active).length,
-        total_posts: 156,
-        pending_reports: mockReports.filter(r => r.status === 'pending').length
-      }
-    };
+    // Gọi DB thực để lấy tổng user
+    try {
+      const res = await axiosClient.get("/users", { params: { size: 1, page: 0 } });
+      const total = res?.totalElements || res?.data?.totalElements || 0;
+      
+      return {
+        data: {
+          total_users: total,
+          active_users: total,
+          banned_users: 0,
+          total_posts: 156, // Chưa có API đếm bài viết trên BE
+          pending_reports: mockReports.filter(r => r.status === 'pending').length
+        }
+      };
+    } catch(err) {
+      return { data: { total_users: 0, active_users: 0, banned_users: 0, total_posts: 0, pending_reports: 0 } };
+    }
   },
 
   getUsers: async (params) => {
-    await delay();
-    let filtered = [...mockUsers];
-    
-    // Tìm kiếm
-    if (params.search) {
-      const s = params.search.toLowerCase();
-      filtered = filtered.filter(u => 
-        u.name.toLowerCase().includes(s) || 
-        u.username.toLowerCase().includes(s) || 
-        u.email.toLowerCase().includes(s)
-      );
-    }
-    
-    // Lọc theo trạng thái
-    if (params.is_active !== undefined) {
-      filtered = filtered.filter(u => u.is_active === params.is_active);
-    }
-
-    // Lọc Role (nếu có truyền lên)
-    if (params.role !== undefined) {
-      filtered = filtered.filter(u => u.role === params.role);
-    }
-
-    // Phân trang
-    const page = params.page || 1;
-    const limit = params.limit || 15;
-    const start = (page - 1) * limit;
-    const paginated = filtered.slice(start, start + limit);
-
-    return {
-      data: {
-        users: paginated,
-        pagination: { total: filtered.length, page, limit }
+    try {
+      // Vì BE (PageResponse) map page từ 0 (0-indexed), nên ta trừ đi 1 so với Frontend (1-indexed).
+      const pageIndex = (params.page || 1) - 1;
+      const limit = params.limit || 15;
+      
+      const beParams = {
+        page: pageIndex,
+        size: limit
+      };
+      
+      if (params.search) {
+        beParams.search = params.search;
       }
-    };
+      
+      const res = await axiosClient.get("/users", { params: beParams });
+      
+      // Axios interceptor đã lấy response.data
+      const content = res?.content || res?.data?.content || [];
+      const totalElements = res?.totalElements || res?.data?.totalElements || 0;
+      
+      // Map định dạng BE sang định dạng FE Admin mong đợi
+      const mappedUsers = content.map(u => ({
+        user_id: u.id,
+        url_avt: u.avatar,
+        name: u.name,
+        username: u.username,
+        email: u.email,
+        role: u.username === "POCCHITHEROCK" ? 1 : 0, // Tạm thời nâng quyền để dễ test Admin
+        is_active: true, // DB hiện chưa chặn user
+        created_at: new Date().toISOString() // DB hiện chưa lưu created_at vào Response
+      }));
+      
+      return {
+        data: {
+          users: mappedUsers,
+          pagination: { total: totalElements, page: params.page || 1, limit }
+        }
+      };
+    } catch(err) {
+      return { data: { users: [], pagination: { total: 0 } } };
+    }
   },
 
   updateUserStatus: async (userId, status) => {
@@ -188,18 +201,31 @@ const adminService = {
   },
 
   getTags: async () => {
-    await delay(200);
-    return { data: { tags: mockTags } };
+    return axiosClient.get("/tags").then(res => {
+      return { data: { tags: res.data || res || [] } };
+    }).catch(() => {
+      return { data: { tags: [] } };
+    });
   },
 
   createTag: async (tag) => {
-    await delay(300);
-    mockTags.push({ 
-      tag_id: mockTags.length + 1, 
-      tag_name: tag, 
-      created_at: new Date().toISOString() 
+    return axiosClient.post("/tags", { tag_name: tag }).then(res => {
+      return { data: res.data || res };
     });
-    return { data: { success: true } };
+  },
+
+  deleteTag: async (tagId) => {
+    return axiosClient.delete(`/tags/${tagId}`).then(res => {
+      return { data: { success: true } };
+    });
+  },
+
+  getPendingPosts: async (params) => {
+    return axiosClient.get("/admin/pending", { params });
+  },
+
+  updatePostModeration: async (postId, status) => {
+    return axiosClient.patch(`/admin/${postId}/status`, null, { params: { status } });
   }
 };
 

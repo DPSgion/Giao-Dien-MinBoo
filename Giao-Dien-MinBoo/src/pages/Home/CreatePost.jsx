@@ -7,6 +7,7 @@ export default function CreatePost() {
     const [step, setStep] = useState("select"); // select | edit | preview
     const [imgFile, setImgFile] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(null);
+    const [imgBase64, setImgBase64] = useState(null);
     const [content, setContent] = useState("");
     const [privacy, setPrivacy] = useState("public");
     const [tags, setTags] = useState([]);
@@ -35,6 +36,13 @@ export default function CreatePost() {
         if (!file || !file.type.startsWith("image/")) return;
         setImgFile(file);
         setPreviewUrl(URL.createObjectURL(file));
+        
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImgBase64(reader.result);
+        };
+        reader.readAsDataURL(file);
+        
         setStep("edit");
     };
 
@@ -70,7 +78,37 @@ export default function CreatePost() {
 
             await postService.createPost(formData);
             navigate("/");
-        } catch (_) { } finally {
+        } catch (error) {
+            console.error("Create post error:", error);
+            const errorMsg = typeof error === 'string' ? error : (error.message || error.data?.message || JSON.stringify(error));
+            const errStatus = error.status || error.statusCode;
+            
+            // Bắt lỗi 400 từ ContentModerationService.java ném ra
+            if (errStatus === 400 && (errorMsg.includes("vi phạm") || errorMsg.includes("nhạy cảm") || errorMsg.includes("cộng đồng"))) {
+                
+                // Lưu vào LocalStorage chờ admin duyệt (giả lập backend)
+                const pendingPost = {
+                    post_id: "pending-" + Date.now(),
+                    content: content,
+                    privacy: privacy,
+                    created_at: new Date().toISOString(),
+                    author: { name: "User", url_avt: "https://ui-avatars.com/api/?name=User" },
+                    url_img: imgBase64 || previewUrl || null,
+                    tags: selectedTags,
+                    // Giữ lại file gốc nếu Admin duyệt trong cùng một sesion (Mặc dù JSON stringify sẽ loại bỏ nó)
+                    // nhưng ta cần Base64 để hiển thị
+                };
+                
+                const existingPending = JSON.parse(localStorage.getItem("admin_pending_posts") || "[]");
+                existingPending.push(pendingPost);
+                localStorage.setItem("admin_pending_posts", JSON.stringify(existingPending));
+
+                alert("⚠️ Bài viết của bạn đang tạm thời bị khóa vì vi phạm tiêu chuẩn (AI phát hiện). Quản trị viên sẽ kiểm duyệt!");
+                navigate("/");
+            } else {
+                alert("Lỗi khi tạo bài viết: " + errorMsg);
+            }
+        } finally {
             setLoading(false);
         }
     };

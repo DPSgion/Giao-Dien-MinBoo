@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import adminService from '../../services/adminService';
+import { postService } from '../../services/apiServices';
 
 export default function AdminPosts() {
   const [posts, setPosts] = useState([]);
@@ -10,20 +11,24 @@ export default function AdminPosts() {
   const pageRef = useRef(1);
   const loadingRef = useRef(false);
   const bottomRef = useRef(null);
-
+  
   const fetchPosts = useCallback(async (p = 1) => {
     if (loadingRef.current) return;
     loadingRef.current = true;
     setLoading(true);
     try {
-      // Dùng /posts/feed vì admin chưa có endpoint riêng lấy tất cả posts
-      // Khi Backend bổ sung GET /admin/posts thì đổi sang adminService.getPosts()
-      const { postService } = await import('../../services/apiServices');
-      const res = await postService.getFeed({ page: p, limit: 12 });
-      const newPosts = res.data?.posts || [];
-      if (p === 1) setPosts(newPosts);
-      else setPosts((prev) => [...prev, ...newPosts]);
-      setHasMore(newPosts.length === 12);
+      // Vì Frontend đang nối với backend production nên không có API getPendingPosts.
+      // Dùng LocalStorage để giả lập kho chờ duyệt ở trang Frontend
+      const pendingData = JSON.parse(localStorage.getItem("admin_pending_posts") || "[]");
+      
+      const limit = 12;
+      const startIndex = (p - 1) * limit;
+      const paginated = pendingData.slice(startIndex, startIndex + limit);
+      
+      if (p === 1) setPosts(paginated);
+      else setPosts((prev) => [...prev, ...paginated]);
+      
+      setHasMore(paginated.length === limit);
     } catch (_) {
     } finally {
       setLoading(false);
@@ -50,15 +55,49 @@ export default function AdminPosts() {
     return () => obs.disconnect();
   }, [hasMore, fetchPosts]);
 
-  // [API 12.3.1] DELETE /admin/posts/{post_id}
-  const handleDelete = async () => {
-    if (!deleteId) return;
+  const handleModeration = async (postId, status) => {
     setDeleting(true);
     try {
-      await adminService.deletePost(deleteId);
-      setPosts((prev) => prev.filter((p) => p.post_id !== deleteId));
-      setDeleteId(null);
-    } catch (_) {
+      // Bóc tách khỏi kho tạm Frontend
+      let pendingData = JSON.parse(localStorage.getItem("admin_pending_posts") || "[]");
+      const approvedPost = pendingData.find(p => p.post_id === postId);
+      pendingData = pendingData.filter(p => p.post_id !== postId);
+      localStorage.setItem("admin_pending_posts", JSON.stringify(pendingData));
+      
+      // Cập nhật UI ngay
+      setPosts((prev) => prev.filter((p) => p.post_id !== postId));
+
+      if (status === 1 && approvedPost) {
+         // Thực hiện gọi createPost thật lên API production Backend!
+         const formData = new FormData();
+         if (approvedPost.content) formData.append("content", approvedPost.content);
+         formData.append("privacy", approvedPost.privacy);
+         
+         if (approvedPost.tags) {
+             approvedPost.tags.forEach(tag => formData.append("tag_ids", tag.tag_id));
+         }
+
+         if (approvedPost.url_img && approvedPost.url_img.startsWith("data:image")) {
+             // Chuyển base64 URL thành File thực thụ để Backend tiếp nhận
+             const res = await fetch(approvedPost.url_img);
+             const blob = await res.blob();
+             // Trích xuất MIME type từ blob (eg: image/png)
+             const ext = blob.type.split('/')[1] || 'jpg';
+             const file = new File([blob], `image.${ext}`, { type: blob.type });
+             formData.append("url_img", file);
+         }
+         
+         await postService.createPost(formData);
+      }
+      
+      if (status === 1) {
+          alert("✅ Đã phê duyệt và đẩy bài viết lên hệ thống Backend!");
+      } else {
+          alert("🚫 Đã từ chối bài viết vĩnh viễn!");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Lỗi khi xử lý bài viết: " + (e.message || e));
     } finally {
       setDeleting(false);
     }
@@ -98,9 +137,9 @@ export default function AdminPosts() {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-xl font-black text-white">Kiểm duyệt bài viết</h2>
+        <h2 className="text-xl font-black text-white">Kiểm duyệt bài viết (18+ / Cảnh báo)</h2>
         <p className="text-sm mt-0.5" style={{ color: '#6b7280' }}>
-          Admin có thể xóa bài viết bất kỳ bỏ qua quyền tác giả
+          Các bài viết chứa nội dung nhạy cảm hiển thị tại đây để Admin xét duyệt.
         </p>
       </div>
 
@@ -154,18 +193,25 @@ export default function AdminPosts() {
                         alt=""
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-4xl">
-                        📝
+                      <div className="w-full h-full flex items-center justify-center text-5xl">
+                        ⚠️
                       </div>
                     )}
                     {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-3">
                       <button
-                        onClick={() => setDeleteId(post.post_id)}
-                        className="px-4 py-2 rounded-xl text-sm font-bold text-white transition-colors"
+                        onClick={() => handleModeration(post.post_id, 1)}
+                        className="px-4 py-2 w-36 rounded-xl text-sm font-bold text-white transition-colors hover:scale-105"
+                        style={{ background: '#10b981' }}
+                      >
+                        ✅ Duyệt bài
+                      </button>
+                      <button
+                        onClick={() => handleModeration(post.post_id, -1)}
+                        className="px-4 py-2 w-36 rounded-xl text-sm font-bold text-white transition-colors hover:scale-105"
                         style={{ background: 'rgba(239,68,68,0.9)' }}
                       >
-                        🗑️ Xóa bài viết
+                        🚫 Cấm bài
                       </button>
                     </div>
                     {/* Privacy badge */}
@@ -221,7 +267,7 @@ export default function AdminPosts() {
                         <span>💬 {post.comment_count || 0}</span>
                       </div>
                       <button
-                        onClick={() => setDeleteId(post.post_id)}
+                        onClick={() => handleModeration(post.post_id, -1)}
                         className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
                         style={{
                           background: 'rgba(239,68,68,0.15)',
@@ -229,7 +275,7 @@ export default function AdminPosts() {
                           border: '1px solid rgba(239,68,68,0.3)',
                         }}
                       >
-                        Xóa
+                        Cấm bài
                       </button>
                     </div>
                   </div>
@@ -248,52 +294,6 @@ export default function AdminPosts() {
       )}
 
       <div ref={bottomRef} className="h-4" />
-
-      {/* Delete confirm modal */}
-      {deleteId && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)' }}
-          onClick={() => setDeleteId(null)}
-        >
-          <div
-            className="rounded-2xl p-6 w-full max-w-sm shadow-2xl"
-            style={{ background: '#111118', border: '1px solid #2a2a38' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="text-center mb-6">
-              <div className="text-4xl mb-3">🗑️</div>
-              <h3 className="text-white font-black text-lg mb-2">
-                Xóa bài viết?
-              </h3>
-              <p className="text-sm" style={{ color: '#6b7280' }}>
-                Hành động này không thể hoàn tác. Bài viết sẽ bị xóa vĩnh viễn.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white transition-colors disabled:opacity-60"
-                style={{ background: '#ef4444' }}
-              >
-                {deleting ? 'Đang xóa...' : 'Xác nhận xóa'}
-              </button>
-              <button
-                onClick={() => setDeleteId(null)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                style={{
-                  background: '#1a1a24',
-                  color: '#9ca3af',
-                  border: '1px solid #2a2a38',
-                }}
-              >
-                Hủy
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
