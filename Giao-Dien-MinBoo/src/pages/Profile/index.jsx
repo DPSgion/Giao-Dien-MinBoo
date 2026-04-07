@@ -17,6 +17,7 @@ export default function Profile() {
     });
     const [saving, setSaving] = useState(false);
     const [selectedPost, setSelectedPost] = useState(null);
+    const [friendStatus, setFriendStatus] = useState(null); // 0=none, 1=sent, 2=friends, 3=received
     const fileRef = useRef(null);
 
     const isMe = !userId || userId === me?.user_id || userId === me?.id || userId === "me";
@@ -28,15 +29,61 @@ export default function Profile() {
         if (!targetId) { setLoading(false); return; }
         fetchProfile();
         fetchPosts();
+        if (!isMe) checkFriendStatus();
     }, [userId, targetId]);
+
+    // ===== CHECK FRIEND STATUS from BE =====
+    const checkFriendStatus = async () => {
+        const myId = me?.user_id || me?.id;
+        alert("STEP 0: checkFriendStatus started. userId=" + userId);
+
+        // Check sent requests first
+        try {
+            alert("STEP 1: calling getSentRequests...");
+            const sentRes = await friendService.getSentRequests();
+            alert("STEP 2: getSentRequests returned: " + JSON.stringify(sentRes));
+            const sentList = Array.isArray(sentRes) ? sentRes : (sentRes?.data || []);
+            for (const r of sentList) {
+                if (r.receiverId === userId) { setFriendStatus(1); return; }
+            }
+        } catch (err) {
+            console.error("checkFriendStatus sentReq error:", err);
+            alert("sentReq ERROR: " + JSON.stringify(err));
+        }
+
+        // Check friends list
+        try {
+            const friendsRes = await friendService.getFriends();
+            const friendsList = Array.isArray(friendsRes) ? friendsRes : (friendsRes?.data || []);
+            for (const f of friendsList) {
+                const otherId = f.requesterId === myId ? f.receiverId : f.requesterId;
+                if (otherId === userId) { setFriendStatus(2); return; }
+            }
+        } catch (err) {
+            console.error("checkFriendStatus friends error:", err);
+        }
+
+        // Check pending received
+        try {
+            const pendingRes = await friendService.getPendingRequests();
+            const pendingList = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
+            for (const r of pendingList) {
+                if (r.requesterId === userId) { setFriendStatus(3); return; }
+            }
+        } catch (err) {
+            console.error("checkFriendStatus pending error:", err);
+        }
+
+        setFriendStatus(0);
+    };
 
     // ===== FETCH PROFILE: GET /users/{id} =====
     const fetchProfile = async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = isMe || targetId === "me" 
-                ? await userService.getCurrentUser() 
+            const res = isMe || targetId === "me"
+                ? await userService.getCurrentUser()
                 : await userService.getUser(targetId);
             const raw = res.data?.data || res.data || res;
             const profileData = mapBeToFe(raw);
@@ -141,11 +188,15 @@ export default function Profile() {
     // ===== FRIEND ACTIONS =====
     const handleAddFriend = async () => {
         try {
-            await friendService.sendRequest({ to_id_B: targetId });
-            setProfile((p) => ({ ...p, friend_request_status: 1 }));
+            await friendService.sendRequest(targetId);
+            setFriendStatus(1);
         } catch (err) {
-            const msg = err?.response?.data?.message || err?.message;
-            alert("Lỗi: " + msg);
+            const msg = err?.response?.data?.message || err?.message || "";
+            if (msg.includes("Data already exists") || msg.includes("violates system constraints")) {
+                setFriendStatus(1);
+            } else {
+                alert("Lỗi: " + msg);
+            }
         }
     };
 
@@ -153,10 +204,39 @@ export default function Profile() {
         if (!confirm("Hủy kết bạn?")) return;
         try {
             await friendService.unfriend(targetId);
-            setProfile((p) => ({ ...p, friend_request_status: 0 }));
+            setFriendStatus(0);
         } catch (err) {
             const msg = err?.response?.data?.message || err?.message;
             alert("Lỗi: " + msg);
+        }
+    };
+
+    // ===== ACCEPT/REJECT from Profile page =====
+    const handleAcceptFromProfile = async () => {
+        try {
+            const pendingRes = await friendService.getPendingRequests();
+            const pendingList = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
+            const req = pendingList.find(r => r.requesterId === userId);
+            if (req) {
+                await friendService.acceptRequest(req.requestId);
+                setFriendStatus(2);
+            }
+        } catch (err) {
+            alert("Lỗi: " + (err?.response?.data?.message || err?.message));
+        }
+    };
+
+    const handleRejectFromProfile = async () => {
+        try {
+            const pendingRes = await friendService.getPendingRequests();
+            const pendingList = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
+            const req = pendingList.find(r => r.requesterId === userId);
+            if (req) {
+                await friendService.rejectRequest(req.requestId);
+                setFriendStatus(0);
+            }
+        } catch (err) {
+            alert("Lỗi: " + (err?.response?.data?.message || err?.message));
         }
     };
 
@@ -381,23 +461,33 @@ export default function Profile() {
                             </div>
                         ) : (
                             <div style={{ display: "flex", gap: 8 }}>
-                                {(!profile.friend_request_status || profile.friend_request_status === 0) && (
+                                {(friendStatus === null || friendStatus === 0) && (
                                     <button onClick={handleAddFriend} style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 24px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                                         Theo dõi
                                     </button>
                                 )}
-                                {profile.friend_request_status === 1 && (
-                                    <button style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600 }}>
+                                {friendStatus === 1 && (
+                                    <button style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "default" }}>
                                         Đã gửi yêu cầu
                                     </button>
                                 )}
-                                {profile.friend_request_status === 2 && (
+                                {friendStatus === 2 && (
                                     <>
                                         <button onClick={handleUnfriend} style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                                             Đang theo dõi
                                         </button>
                                         <button style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
                                             Nhắn tin
+                                        </button>
+                                    </>
+                                )}
+                                {friendStatus === 3 && (
+                                    <>
+                                        <button onClick={handleAcceptFromProfile} style={{ background: "#0095f6", color: "#fff", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                            Chấp nhận
+                                        </button>
+                                        <button onClick={handleRejectFromProfile} style={{ background: "#efefef", border: "none", borderRadius: 8, padding: "7px 16px", fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+                                            Từ chối
                                         </button>
                                     </>
                                 )}

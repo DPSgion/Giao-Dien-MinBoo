@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 import { friendService } from "../../services/apiServices";
 
 export default function Friends() {
@@ -8,6 +9,7 @@ export default function Friends() {
     const [pending, setPending] = useState({ received: [], sent: [] });
     const [search, setSearch] = useState("");
     const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
         if (tab === "friends") fetchFriends();
@@ -22,9 +24,19 @@ export default function Friends() {
     const fetchFriends = async () => {
         setLoading(true);
         try {
-            const res = await friendService.getFriends("me", { page: 1, limit: 50, search });
-            setFriends(res.data.friends || []);
-        } catch (_) { } finally { setLoading(false); }
+            const res = await friendService.getFriends();
+            const rawFriends = Array.isArray(res) ? res : (res?.data || []);
+            const myId = user?.user_id || user?.id;
+            const mapped = rawFriends.map(f => {
+                const isRequester = f.requesterId === myId;
+                return {
+                    user_id: isRequester ? f.receiverId : f.requesterId,
+                    name: isRequester ? f.receiverName : f.requesterName,
+                    url_avt: null,
+                };
+            });
+            setFriends(mapped);
+        } catch (err) { console.error("fetchFriends:", err); } finally { setLoading(false); }
     };
 
     // ============================================================
@@ -35,9 +47,32 @@ export default function Friends() {
     const fetchPending = async () => {
         setLoading(true);
         try {
-            const res = await friendService.getPendingRequests();
-            setPending(res.data);
-        } catch (_) { } finally { setLoading(false); }
+            const [pendingRes, sentRes] = await Promise.all([
+                friendService.getPendingRequests(),
+                friendService.getSentRequests()
+            ]);
+            
+            const receivedRaw = Array.isArray(pendingRes) ? pendingRes : (pendingRes?.data || []);
+            const sentRaw = Array.isArray(sentRes) ? sentRes : (sentRes?.data || []);
+            
+            const received = receivedRaw.map(req => ({
+                friend_request_id: req.requestId,
+                from_user: { user_id: req.requesterId, name: req.requesterName },
+                message: req.message,
+                created_at: req.createdAt
+            }));
+
+            const sent = sentRaw.map(req => ({
+                friend_request_id: req.requestId,
+                to_user: { user_id: req.receiverId, name: req.receiverName },
+                created_at: req.createdAt
+            }));
+
+            setPending({ received, sent });
+        } catch (err) {
+            console.error("fetchPending Error:", err);
+            // alert("Lỗi tải bạn bè: " + JSON.stringify(err?.message || err));
+        } finally { setLoading(false); }
     };
 
     // ============================================================
@@ -61,7 +96,7 @@ export default function Friends() {
     // ============================================================
     const handleDecline = async (friendRequestId, isSent = false) => {
         try {
-            await friendService.deleteRequest(friendRequestId);
+            await friendService.rejectRequest(friendRequestId);
             if (isSent) {
                 setPending((prev) => ({
                     ...prev,

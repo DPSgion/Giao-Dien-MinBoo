@@ -77,7 +77,7 @@ export default function SearchModal({ onClose }) {
         e.preventDefault();
         e.stopPropagation();
         try {
-            await friendService.sendRequest({ to_id_B: userId });
+            await friendService.sendRequest(userId);
             setResults((prev) =>
                 prev.map((u) => u.user_id === userId ? { ...u, is_friend: true } : u)
             );
@@ -184,7 +184,7 @@ export default function SearchModal({ onClose }) {
                                 <button
                                     onClick={(e) => handleAddFriend(e, user.user_id)}
                                     className="bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-lg hover:bg-blue-600 transition-colors">
-                                    Kết bạn
+                                    Theo dõi
                                 </button>
                             )}
                             {!query && (
@@ -199,7 +199,7 @@ export default function SearchModal({ onClose }) {
                         </div>
 
                         {user.is_friend && (
-                            <span className="text-xs text-green-500 font-medium flex-shrink-0">Bạn bè</span>
+                            <span className="text-xs text-gray-500 font-medium flex-shrink-0 bg-gray-100 px-2 py-1 rounded">Đã theo dõi</span>
                         )}
                     </Link>
                 ))}

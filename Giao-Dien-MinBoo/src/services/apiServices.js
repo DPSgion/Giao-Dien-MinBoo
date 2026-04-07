@@ -49,8 +49,14 @@ export const userService = {
     // PATCH /users/me/password - Đổi mật khẩu
     changePassword: (data) => axiosClient.patch("/users/me/password", data),
 
-    // GET /users/search - Tìm kiếm user
-    searchUsers: (params) => axiosClient.get("/users/search", { params }),
+    // GET /users - Tìm kiếm user
+    searchUsers: (params) => axiosClient.get("/users", { 
+        params: { 
+            search: params.q, 
+            page: params.page ? params.page - 1 : 0, 
+            size: params.limit || 20 
+        } 
+    }),
 };
 
 // ============================================================
@@ -71,13 +77,13 @@ export const friendService = {
     // GET /friends/requests/pending - Xem lời mời nhận được
     getPendingRequests: () => axiosClient.get("/friends/requests/pending"),
 
-    // POST /friends/requests/accept/{requestId} - Chấp nhận lời mời
+    // POST /friends/request/accept/{requestId} - Chấp nhận lời mời
     acceptRequest: (requestId) =>
-        axiosClient.post(`/friends/requests/accept/${requestId}`),
+        axiosClient.post(`/friends/request/accept/${requestId}`),
 
-    // POST /friends/requests/reject/{requestId} - Từ chối lời mời
+    // POST /friends/request/reject/{requestId} - Từ chối lời mời
     rejectRequest: (requestId) =>
-        axiosClient.post(`/friends/requests/reject/${requestId}`),
+        axiosClient.post(`/friends/request/reject/${requestId}`),
 
     // POST /friends/unfriend/{friendId} - Hủy kết bạn
     unfriend: (friendId) =>

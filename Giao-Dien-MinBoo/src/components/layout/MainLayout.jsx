@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
-import { notificationService } from "../../services/apiServices";
+import { notificationService, friendService } from "../../services/apiServices";
 import websocketService from "../../services/websocketService";
 
 import SearchModal from "../../pages/Search/SearchModal";
@@ -10,7 +10,7 @@ export default function MainLayout({ children }) {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
-    const [unread, setUnread] = useState({ notifications: 0, messages: 0 });
+    const [unread, setUnread] = useState({ notifications: 0, messages: 0, friendRequests: 0 });
     const [showSearch, setShowSearch] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [collapsed, setCollapsed] = useState(false);
@@ -37,11 +37,20 @@ export default function MainLayout({ children }) {
     const fetchUnreadCount = async () => {
         try {
             const res = await notificationService.getUnreadCount();
-            setUnread({
+            setUnread(prev => ({
+                ...prev,
                 notifications: res.data.notifications_unread,
                 messages: res.data.messages_unread,
-            });
+            }));
         } catch (_) { }
+        try {
+            const res = await friendService.getPendingRequests();
+            const received = Array.isArray(res) ? res : (res?.data || []);
+            setUnread(prev => ({
+                ...prev,
+                friendRequests: received.length,
+            }));
+        } catch (err) { }
     };
 
     const handleLogout = async () => {
@@ -65,7 +74,7 @@ export default function MainLayout({ children }) {
                 : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-6 h-6"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>,
         },
         {
-            path: "/friends", label: "Bạn bè",
+            path: "/friends", label: "Bạn bè", badge: unread.friendRequests,
             icon: (active) => <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth={active ? "0" : "2"} className="w-6 h-6"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /></svg>,
         },
         {
