@@ -14,7 +14,7 @@ export default function Profile() {
     const [activeTab, setActiveTab] = useState("posts");
     const [editMode, setEditMode] = useState(false);
     const [editForm, setEditForm] = useState({
-        email: "", sdt: "", address: "", birth: "", sex: "",
+        name: "", sdt: "", address: "", birth: "", sex: "",
     });
     const [saving, setSaving] = useState(false);
     const [selectedPost, setSelectedPost] = useState(null);
@@ -118,7 +118,7 @@ export default function Profile() {
 
     const populateEditForm = (raw) => {
         setEditForm({
-            email: raw.email || "",
+            name: raw.name || "",
             sdt: raw.phone || raw.sdt || "",
             address: raw.address || "",
             birth: raw.birth || "",
@@ -158,13 +158,24 @@ export default function Profile() {
     const handleSaveProfile = async () => {
         setSaving(true);
         try {
-            // Chỉ gửi field có giá trị, BE không yêu cầu field trống
-            const payload = {};
-            if (editForm.email) payload.email = editForm.email;
-            if (editForm.sdt) payload.sdt = editForm.sdt;
-            if (editForm.address) payload.address = editForm.address;
-            if (editForm.birth) payload.birth = editForm.birth;
-            if (editForm.sex !== "") payload.sex = editForm.sex;
+            // Gửi đầy đủ dữ liệu (FULL payload) vì PUT yêu cầu toàn bộ thông tin của resource.
+            // Tránh việc backend lưu các field bị thiếu thành null gây lỗi 500 ConstraintViolation.
+            const payload = {
+                id: profile.id || profile.user_id || me?.id,
+                username: profile.username || me?.username,
+                email: profile.email || me?.email,
+                avatar: profile.avatar || profile.url_avt || me?.avatar,
+                name: editForm.name || profile.name,
+                phone: editForm.sdt || profile.phone || profile.sdt,
+                address: editForm.address || profile.address,
+                birth: editForm.birth || profile.birth,
+            };
+
+            if (editForm.sex !== "") {
+                payload.sex = parseInt(editForm.sex);
+            } else if (profile.sex !== undefined && profile.sex !== null) {
+                payload.sex = parseInt(profile.sex);
+            }
 
             const res = await userService.updateProfile(payload);
             const data = res.data?.data || res.data || res;
@@ -337,7 +348,7 @@ export default function Profile() {
 
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                             {[
-                                { key: "email", placeholder: "Email", type: "text" },
+                                { key: "name", placeholder: "Tên hiển thị", type: "text" },
                                 { key: "sdt", placeholder: "Số điện thoại", type: "text" },
                                 { key: "address", placeholder: "Địa chỉ", type: "text" },
                             ].map((f) => (
@@ -551,7 +562,7 @@ export default function Profile() {
                     <div style={{ padding: 24 }}>
                         <div style={{ maxWidth: 480, display: "flex", flexDirection: "column", gap: 20 }}>
                             {[
-                                { label: "Email", key: "email", placeholder: "email@example.com" },
+                                { label: "Tên hiển thị", key: "name", placeholder: "Họ và tên" },
                                 { label: "Số điện thoại", key: "sdt", placeholder: "0987654321" },
                                 { label: "Địa chỉ", key: "address", placeholder: "Hà Nội, Việt Nam" },
                             ].map((f) => (

@@ -30,14 +30,12 @@ export const userService = {
     },
 
     updateProfile: (data) => {
-
         if (data instanceof FormData) {
-            return axiosClient.put("/user/me", data, {
+            return axiosClient.put("/users/me", data, {
                 headers: { "Content-Type": "multipart/form-data" },
             });
         }
-
-        return axiosClient.put("/user/me", data);
+        return axiosClient.put("/users/me", data);
     },
 
 

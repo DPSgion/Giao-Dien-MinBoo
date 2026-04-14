@@ -27,9 +27,14 @@ axiosClient.interceptors.request.use(
                 const parsed = JSON.parse(savedUser);
                 let userId = parsed.user_id || parsed.id;
                 
-                // Chỉ set header nếu userId hợp lệ và CHỈ chứa ký tự ASCII (ISO-8859-1)
-                // để tránh lỗi "String contains non ISO-8859-1 code point" trên trình duyệt
-                if (userId && typeof userId === 'string' && /^[\x00-\x7F]*$/.test(userId)) {
+                // Chỉ set header nếu userId là một UUID hợp lệ, tránh lỗi gửi username
+                const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
+                
+                // QUAN TRỌNG: Chỉ gửi header user-id cho duy nhất API về bình luận (/comments)
+                // Các API khác trên backend không yêu cầu header này và sẽ tự chặn ngang (lỗi CORS Network Error) nếu ta cố gắng đính kèm nó!
+                const isCommentEndpoint = config.url && config.url.includes('/comments');
+
+                if (userId && typeof userId === 'string' && isUUID && isCommentEndpoint) {
                     config.headers["user-id"] = userId;
                 }
             } catch (e) {
@@ -61,6 +66,8 @@ axiosClient.interceptors.response.use(
     (response) => response.data,
     async (error) => {
         const originalRequest = error.config;
+        console.error("[Axios Error] Endpoint:", originalRequest?.url, "- Message:", error.message, "- Response:", error.response);
+        console.dir(error);
 
         // Nếu lỗi 401 và chưa retry
         if (error.response?.status === 401 && !originalRequest._retry) {
@@ -81,10 +88,12 @@ axiosClient.interceptors.response.use(
 
             try {
                 const refresh_token = localStorage.getItem("refresh_token");
+                console.log("[Axios Interceptor] Refreshing token...");
                 // [API 2.3] POST /auth/refresh-token - Lấy token mới
                 const res = await axios.post(`${BASE_URL}/auth/refresh-token`, {
                     refresh_token,
                 });
+                console.log("[Axios Interceptor] Refresh token success!");
                 const { access_token, refresh_token: newRefresh } = res.data.data;
                 localStorage.setItem("access_token", access_token);
                 localStorage.setItem("refresh_token", newRefresh);
@@ -92,6 +101,7 @@ axiosClient.interceptors.response.use(
                 processQueue(null, access_token);
                 return axiosClient(originalRequest);
             } catch (refreshError) {
+                console.error("[Axios Interceptor] Refresh token failed:", refreshError.message, refreshError.response);
                 processQueue(refreshError, null);
                 // Refresh thất bại -> logout
                 localStorage.clear();
