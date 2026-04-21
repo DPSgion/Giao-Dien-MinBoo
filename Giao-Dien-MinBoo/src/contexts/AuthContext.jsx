@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
-import axiosClient from "../services/axiosClient";
+// import axiosClient from "../services/axiosClient";
 import { userService } from "../services/apiServices";
 const AuthContext = createContext(null);
 
@@ -16,6 +16,7 @@ function decodeJwtPayload(token) {
         );
         return JSON.parse(jsonPayload);
     } catch (e) {
+        console.error('Invalid JWT token:', e);
         return null;
     }
 }
@@ -160,7 +161,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const refresh_token = localStorage.getItem("refresh_token");
             await authService.logout(refresh_token);
-        } catch (_) { }
+        } catch (err_) {console.error("Error log out", err_) }
         localStorage.clear();
         setUser(null);
     };

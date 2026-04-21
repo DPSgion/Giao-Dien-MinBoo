@@ -95,8 +95,8 @@ const navItems = [
     ),
   },
 ];
-
-export default function AdminLayout({ pendingReports = 0 }) {
+// vanhau xóa pendingReports vì không dùng!!! { pendingReports = 0 }
+export default function AdminLayout() {
   const { user, logout } = useAuth();
   const [reportCount, setReportCount] = useState(0);
 

@@ -34,7 +34,8 @@ function PrivateRoute({ children }) {
 
 // Admin route wrapper
 function AdminRoute() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
+  // const { user, loading } = useAuth();
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -156,7 +157,7 @@ function AppRoutes() {
 }
 
 export default function App() {
-  const basename = import.meta.env.DEV ? "/" : "/Giao-Dien-MinBoo";
+  const basename = import.meta.env.DEV ? '/' : '/Giao-Dien-MinBoo';
   return (
     <BrowserRouter basename={basename}>
       <AuthProvider>

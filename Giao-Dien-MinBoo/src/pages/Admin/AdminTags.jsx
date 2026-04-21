@@ -49,6 +49,7 @@ export default function AdminTags() {
       setTags(tags.filter(t => t.tag_id !== tagId));
     } catch (e) {
       alert("Lỗi khi xóa tag");
+      console.error("Lỗi xóa tag:", e);
     }
   };
 

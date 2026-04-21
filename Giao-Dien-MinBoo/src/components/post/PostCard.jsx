@@ -43,7 +43,7 @@ export default function PostCard({ post, onDelete }) {
                 if (!currentReaction) setReactionCount((c) => c + 1);
                 setCurrentReaction(type);
             }
-        } catch (_) { }
+        } catch (err_) { console.error('handleReact ở PostCard gặp Error:', err_); }
     };
 
     // ============================================================
@@ -56,7 +56,7 @@ export default function PostCard({ post, onDelete }) {
             const res = await commentService.getComments(post.post_id);
             setComments(res.data.comments || []);
             setShowComments(true);
-        } catch (_) { }
+        } catch (error_) {console.error('loadComments ở PostCard gặp Error:', error_);}
     };
 
     // ============================================================
@@ -72,7 +72,7 @@ export default function PostCard({ post, onDelete }) {
             setComments((prev) => [...prev, res.data]);
             setCommentCount((c) => c + 1);
             setNewComment("");
-        } catch (_) { } finally {
+        } catch (err) {console.error("Handle comment gặp lỗi", err) } finally {
             setLoadingComment(false);
         }
     };
@@ -85,7 +85,7 @@ export default function PostCard({ post, onDelete }) {
         if (!confirm("Xóa bài viết này?")) return;
         try {
             await onDelete(post.post_id);
-        } catch (_) { }
+        } catch (err) {"handle delete gặp lỗi", err }
     };
 
     const timeAgo = (dateStr) => {

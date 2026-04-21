@@ -132,7 +132,7 @@ export default function Profile() {
             const res = await postService.getUserPosts(targetId);
             const data = res.data?.data || res.data || res;
             setPosts(data.posts || data.content || (Array.isArray(data) ? data : []));
-        } catch (_) { }
+        } catch (error_) {console.error("Lỗi fetch Posts"), error_ }
     };
 
     // ===== UPLOAD AVATAR: POST /users/me/avatar =====

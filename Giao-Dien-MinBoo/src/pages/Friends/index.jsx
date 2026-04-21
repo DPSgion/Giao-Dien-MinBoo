@@ -15,6 +15,7 @@ export default function Friends() {
   useEffect(() => {
     if (tab === 'friends') fetchFriends();
     if (tab === 'requests') fetchPending();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
   // ============================================================
@@ -102,7 +103,7 @@ export default function Friends() {
       setFriends((prev) => [...prev, { ...user }]);
       window.dispatchEvent(new Event('friend_request_changed'));
     } catch (err_) {
-      console.log('handleAccept Error:', err_);
+      console.error('handleAccept Error:', err_);
     }
   };
 

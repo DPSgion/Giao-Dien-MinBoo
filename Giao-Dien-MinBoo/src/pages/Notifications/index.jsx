@@ -44,7 +44,7 @@ export default function Notifications() {
             const res = await notificationService.getNotifications(params);
             const notiList = res?.notifications || res?.data?.notifications || [];
             setNotifications(notiList);
-        } catch (_) { } finally {
+        } catch (error_) {console.error("Lỗi fetch Notifications"), error_ } finally {
             setLoading(false);
         }
     };
@@ -67,7 +67,7 @@ export default function Notifications() {
                 is_read: false,
             }));
             setFriendRequests(mapped);
-        } catch (_) { }
+        } catch (error_) {console.error("Lỗi fetch Friend Requests", error_) }
     };
 
     // ============================================================
@@ -79,7 +79,7 @@ export default function Notifications() {
             setNotifications((prev) =>
                 prev.map((n) => n.notification_id === notificationId ? { ...n, is_read: true } : n)
             );
-        } catch (_) { }
+        } catch (error_) { console.error("Lỗi mark read", error_) }
     };
 
     // ============================================================
@@ -89,7 +89,7 @@ export default function Notifications() {
         try {
             await notificationService.markAllRead();
             setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-        } catch (_) { }
+        } catch (error_) {console.error("Lỗi mark all read", error_) }
     };
 
     // Theo dõi lại

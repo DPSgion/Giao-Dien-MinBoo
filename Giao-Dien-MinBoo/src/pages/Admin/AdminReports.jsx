@@ -47,7 +47,7 @@ export default function AdminReports() {
       const res = await adminService.getReports(params);
       setReports(res.data?.reports || []);
       setPagination(res.data?.pagination || { total: 0 });
-    } catch (_) {
+    } catch (err) { console.error('Error fetching reports:', err);
     } finally {
       setLoading(false);
     }
@@ -73,7 +73,7 @@ export default function AdminReports() {
           r.report_id === reportId ? { ...r, status: newStatus } : r
         )
       );
-    } catch (_) {
+    } catch (err) { console.log('Error updating report status:', err);
     } finally {
       setUpdatingId(null);
     }

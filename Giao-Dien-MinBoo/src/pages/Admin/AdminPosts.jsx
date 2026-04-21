@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import adminService from '../../services/adminService';
+// import adminService from '../../services/adminService';
 import { postService } from '../../services/apiServices';
 
 export default function AdminPosts() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [deleteId, setDeleteId] = useState(null);
+  //note lại deleteId do không dùng.
+  // const [deleteId, setDeleteId] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const pageRef = useRef(1);
   const loadingRef = useRef(false);
@@ -29,8 +30,8 @@ export default function AdminPosts() {
       else setPosts((prev) => [...prev, ...paginated]);
       
       setHasMore(paginated.length === limit);
-    } catch (_) {
-    } finally {
+    } catch (error_) { console.error('Error fetching pending posts:', error_); }
+     finally {
       setLoading(false);
       loadingRef.current = false;
     }
@@ -57,6 +58,7 @@ export default function AdminPosts() {
 
   const handleModeration = async (postId, status) => {
     setDeleting(true);
+    console.log(deleting); // vanhau thêm cho có sử dụng biến.
     try {
       // Bóc tách khỏi kho tạm Frontend
       let pendingData = JSON.parse(localStorage.getItem("admin_pending_posts") || "[]");

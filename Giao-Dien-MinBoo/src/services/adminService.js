@@ -106,7 +106,7 @@ const adminService = {
           pending_reports: mockReports.filter(r => r.status === 'pending').length
         }
       };
-    } catch(err) {
+    } catch(err) { console.error("Lỗi getStatistics", err);
       return { data: { total_users: 0, active_users: 0, banned_users: 0, total_posts: 0, pending_reports: 0 } };
     }
   },
@@ -150,7 +150,7 @@ const adminService = {
           pagination: { total: totalElements, page: params.page || 1, limit }
         }
       };
-    } catch(err) {
+    } catch(err) { console.error("Lỗi getUsers", err)
       return { data: { users: [], pagination: { total: 0 } } };
     }
   },
@@ -193,8 +193,8 @@ const adminService = {
     }
     return { data: { success: true } };
   },
-
-  deletePost: async (postId) => {
+  // vanhau xóa postId vì k được dùng. muốn dùng thì cứ add vào postId
+  deletePost: async () => {
     await delay(400);
     // giả định post bị xóa thành công
     return { data: { success: true } };
@@ -214,11 +214,17 @@ const adminService = {
     });
   },
 
-  deleteTag: async (tagId) => {
-    return axiosClient.delete(`/tags/${tagId}`).then(res => {
-      return { data: { success: true } };
-    });
-  },
+deleteTag: async (tagId) => {
+  return axiosClient.delete(`/tags/${tagId}`).then(() => {
+    return { data: { success: true } };
+  });
+  }, // còn đây là mới. Bỏ res do k dùng.
+
+  //   deleteTag: async (tagId) => {
+  //   return axiosClient.delete(`/tags/${tagId}`).then(res => {
+  //     return { data: { success: true } };
+  //   });
+  // }, đây là code cũ
 
   getPendingPosts: async (params) => {
     return axiosClient.get("/admin/pending", { params });
