@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { messageService } from '../../services/apiServices';
 import websocketService from '../../services/websocketService';
+import SecureImage from '../../components/common/SecureImage'; // Component tải ảnh có token
 
 export default function Messages() {
   const { conversationId: paramConvId } = useParams();
@@ -17,47 +18,85 @@ export default function Messages() {
   const messagesEndRef = useRef(null);
   const fileRef = useRef(null);
   const typingTimer = useRef(null);
+  const lastOpenedParamRef = useRef(null); // Ngăn mở lại conversation do re-render
 
+  // ============================================================
+  // 1. Kết nối WebSocket & fetch conversations ban đầu
+  // ============================================================
   useEffect(() => {
-    fetchConversations();
+    if (me?.user_id) {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        websocketService.connect(me.user_id, token);
+      }
+      fetchConversations();
+    }
+
     setupWebSocket();
     return () => teardownWebSocket();
-  }, []);
+  }, [me?.user_id]);
 
+  // ============================================================
+  // 2. Xử lý mở conversation từ URL param (chỉ một lần)
+  // ============================================================
   useEffect(() => {
-    if (paramConvId) {
-      const conv = conversations.find((c) => c.conversation_id === paramConvId);
-      if (conv) openConversation(conv);
+    if (!paramConvId) {
+      lastOpenedParamRef.current = null;
+      return;
     }
-  }, [paramConvId, conversations]);
 
+    // Đã mở đúng conversation này rồi thì bỏ qua
+    if (lastOpenedParamRef.current === paramConvId) return;
+
+    const conv = conversations.find((c) => c.conversation_id === paramConvId);
+    if (conv && activeConv?.conversation_id !== paramConvId) {
+      lastOpenedParamRef.current = paramConvId;
+      openConversation(conv);
+    }
+  }, [paramConvId, conversations, activeConv]);
+
+  // ============================================================
+  // 3. Auto scroll xuống cuối khi có tin nhắn mới
+  // ============================================================
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   // ============================================================
-  // [API 9.1] GET /conversations - Danh sách cuộc hội thoại
-  // Backend Java: MessageController.getConversations()
+  // API: Lấy danh sách cuộc hội thoại
   // ============================================================
   const fetchConversations = async () => {
     try {
       const res = await messageService.getConversations();
-      const convs = Array.isArray(res) ? res : (res?.data?.conversations || res?.conversations || res?.data || []);
-      setConversations(convs);
+      console.log('[DEBUG] getConversations raw response:', res);
+
+      let conversations = [];
+      if (Array.isArray(res)) {
+        conversations = res;
+      } else if (res && Array.isArray(res.data)) {
+        conversations = res.data;
+      } else if (res && Array.isArray(res.conversations)) {
+        conversations = res.conversations;
+      } else if (res?.data && Array.isArray(res.data.conversations)) {
+        conversations = res.data.conversations;
+      } else {
+        console.warn('Unexpected conversations format:', res);
+      }
+
+      console.log('[DEBUG] Parsed conversations:', conversations);
+      setConversations(conversations);
     } catch (error) {
       console.error('Lỗi khi tải trò chuyện:', error);
     }
   };
 
-  // WebSocket event handlers
+  // ============================================================
+  // WebSocket listeners
+  // ============================================================
   const setupWebSocket = () => {
-    // [WS Server -> Client] new_message - Nhận tin nhắn mới realtime
     websocketService.on('new_message', handleNewMessage);
-    // [WS Server -> Client] user_typing - Đối phương đang gõ
     websocketService.on('user_typing', handleTyping);
-    // [WS Server -> Client] user_stop_typing - Đối phương ngừng gõ
     websocketService.on('user_stop_typing', handleStopTyping);
-    // [WS Server -> Client] message_seen - Đối phương đã xem
     websocketService.on('message_seen', () => {});
   };
 
@@ -68,17 +107,29 @@ export default function Messages() {
   };
 
   const handleNewMessage = (data) => {
+    console.log('[WS] new_message received:', data);
     if (data.conversation_id === activeConv?.conversation_id) {
-      setMessages((prev) => [...prev, data]);
+      setMessages((prev) => [
+        ...prev,
+        {
+          message_id: data.message_id,
+          content: data.content,
+          url_img: data.url_img,
+          created_at: data.created_at,
+          sender: data.sender,
+        },
+      ]);
     }
-    // Cập nhật last_message trong danh sách
     setConversations((prev) =>
       prev.map((c) =>
         c.conversation_id === data.conversation_id
           ? {
               ...c,
               last_message: data.content || (data.url_img ? '[Hình ảnh]' : ''),
-              unread_count: (c.unread_count || 0) + 1,
+              unread_count:
+                data.sender?.user_id === me?.user_id
+                  ? 0
+                  : (c.unread_count || 0) + 1,
             }
           : c
       )
@@ -86,29 +137,36 @@ export default function Messages() {
   };
 
   const handleTyping = (data) => {
-    if (data.conversation_id === activeConv?.conversation_id)
+    if (data.conversation_id === activeConv?.conversation_id) {
       setIsPartnerTyping(true);
+    }
   };
 
   const handleStopTyping = (data) => {
-    if (data.conversation_id === activeConv?.conversation_id)
+    if (data.conversation_id === activeConv?.conversation_id) {
       setIsPartnerTyping(false);
+    }
   };
 
   // ============================================================
-  // [API 9.2] GET /conversations/{id}/messages - Lịch sử tin nhắn
-  // Backend Java: MessageController.getMessages()
+  // Mở cuộc trò chuyện, tải tin nhắn
   // ============================================================
   const openConversation = async (conv) => {
     setActiveConv(conv);
     setLoading(true);
     try {
       const res = await messageService.getMessages(conv.conversation_id);
-      const msgs = Array.isArray(res) ? res : (res?.data?.messages || res?.messages || res?.data || []);
+      let msgs = Array.isArray(res)
+        ? res
+        : res?.data?.messages || res?.messages || res?.data || [];
+
+      // Sắp xếp tăng dần theo thời gian
+      msgs = msgs.sort(
+        (a, b) => new Date(a.created_at) - new Date(b.created_at)
+      );
+
       setMessages(msgs);
-      // [API 9.4] Đánh dấu đã xem
       await messageService.markSeen(conv.conversation_id);
-      // [WS] mark_seen qua WebSocket
       websocketService.markSeen(conv.conversation_id);
       setConversations((prev) =>
         prev.map((c) =>
@@ -118,65 +176,89 @@ export default function Messages() {
         )
       );
     } catch (error_) {
-         console.error('Lỗi khi mở cuộc trò chuyện:', error_);
+      console.error('Lỗi khi mở cuộc trò chuyện:', error_);
     } finally {
       setLoading(false);
     }
   };
 
   // ============================================================
-  // [API 9.3] POST /conversations/{id}/messages (REST fallback)
-  // Ưu tiên gửi qua WebSocket: websocketService.sendMessage()
-  // Backend Java: MessageController.sendMessage()
+  // Gửi tin nhắn (text + ảnh)
   // ============================================================
   const handleSend = async (e) => {
     e?.preventDefault();
     if (!newMsg.trim() && !imgFile) return;
     if (!activeConv) return;
 
+    const tempMessageId = `temp_${Date.now()}`;
+    const optimisticMessage = {
+      message_id: tempMessageId,
+      content: newMsg,
+      url_img: imgFile ? URL.createObjectURL(imgFile) : null,
+      created_at: new Date().toISOString(),
+      sender: {
+        user_id: me?.user_id,
+        name: me?.name || me?.username || 'Tôi',
+        url_avt: me?.url_avt,
+      },
+      isPending: true,
+    };
+
     try {
-      if (imgFile) {
-        // REST fallback khi có file đính kèm
-        const formData = new FormData();
-        if (newMsg.trim()) formData.append('content', newMsg);
-        formData.append('url_img', imgFile);
-        const res = await messageService.sendMessage(
-          activeConv.conversation_id,
-          formData
-        );
-        setMessages((prev) => [...prev, res?.data || res]);
-        setImgFile(null);
-      } else {
-        // Gửi qua WebSocket (ưu tiên)
-        websocketService.sendMessage(activeConv.conversation_id, newMsg);
-        // Optimistic update UI
-        setMessages((prev) => [
-          ...prev,
-          {
-            message_id: Date.now().toString(),
-            content: newMsg,
-            created_at: new Date().toISOString(),
-            sender: { user_id: me.user_id, name: me.name || me.username || "Tôi", url_avt: me.url_avt },
-          },
-        ]);
-      }
+      setMessages((prev) => [...prev, optimisticMessage]);
       setNewMsg('');
-      // [WS] Báo ngừng gõ
-      websocketService.stopTyping(activeConv.conversation_id);
+
+      const formData = new FormData();
+      if (newMsg.trim()) formData.append('content', newMsg);
+      if (imgFile) formData.append('url_img', imgFile);
+      console.log('Sending message with file:', imgFile?.name, imgFile?.size);
+
+      const res = await messageService.sendMessage(
+        activeConv.conversation_id,
+        formData
+      );
+
+      let newMessage = res?.data || res;
+      // Fallback nếu server không trả created_at
+      if (!newMessage.created_at) {
+        newMessage.created_at = optimisticMessage.created_at;
+      }
+
+      if (newMessage?.message_id) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.message_id === tempMessageId
+              ? { ...newMessage, isPending: false }
+              : msg
+          )
+        );
+      }
+
+      setImgFile(null);
     } catch (error_) {
-        console.error('Lỗi khi gửi tin nhắn:', error_); 
+      console.error('Lỗi khi gửi tin nhắn:', error_);
+      const errorMsg =
+        error_?.response?.data?.message ||
+        error_?.message ||
+        'Gửi ảnh thất bại';
+      alert(errorMsg);
+      setMessages((prev) =>
+        prev.filter((msg) => msg.message_id !== tempMessageId)
+      );
+    } finally {
+      websocketService.stopTyping(activeConv.conversation_id);
     }
   };
 
-  // Xử lý typing indicator
+  // ============================================================
+  // Typing indicator
+  // ============================================================
   const handleInputChange = (e) => {
     setNewMsg(e.target.value);
     if (!activeConv) return;
-    // [WS] typing event
     websocketService.typing(activeConv.conversation_id);
     clearTimeout(typingTimer.current);
     typingTimer.current = setTimeout(() => {
-      // [WS] stop_typing sau 2s ngừng gõ
       websocketService.stopTyping(activeConv.conversation_id);
     }, 2000);
   };
@@ -189,10 +271,20 @@ export default function Messages() {
     });
   };
 
+  // Hàm lấy thông tin partner (tùy chỉnh theo cấu trúc backend)
+  const getPartnerInfo = (conv) => {
+    if (conv.partner) return conv.partner;
+    if (conv.other_user) return conv.other_user;
+    return { name: 'Người dùng', username: 'user', url_avt: null };
+  };
+
+  // ============================================================
+  // Render
+  // ============================================================
   return (
-    <div className="flex h-screen border-l border-gray-200">
-      {/* Conversation list */}
-      <div className="w-80 border-r border-gray-200 flex flex-col flex-shrink-0">
+    <div className="flex h-full w-full border-l border-gray-200">
+      {/* ========== CỘT TRÁI: DANH SÁCH CHAT (có scroll riêng) ========== */}
+      <div className="w-80 border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="font-bold text-base">{me?.username}</h2>
         </div>
@@ -203,76 +295,83 @@ export default function Messages() {
               Chưa có tin nhắn nào
             </div>
           )}
-          {conversations.map((conv) => (
-            <button
-              key={conv.conversation_id}
-              onClick={() => openConversation(conv)}
-              className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors ${
-                activeConv?.conversation_id === conv.conversation_id
-                  ? 'bg-gray-50'
-                  : ''
-              }`}
-            >
-              <div className="relative">
-                <img
-                  src={
-                    conv.partner?.url_avt ||
-                    `https://ui-avatars.com/api/?name=${conv.partner?.name || conv.partner?.username || 'U'}&background=random`
-                  }
-                  className="w-12 h-12 rounded-full object-cover"
-                  alt={conv.partner?.name}
-                />
-                {conv.partner?.is_online && (
-                  <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+          {conversations.map((conv) => {
+            const partner = getPartnerInfo(conv);
+            return (
+              <button
+                key={conv.conversation_id}
+                onClick={() => openConversation(conv)}
+                className={`w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 transition-colors ${
+                  activeConv?.conversation_id === conv.conversation_id
+                    ? 'bg-gray-50'
+                    : ''
+                }`}
+              >
+                <div className="relative">
+                  <img
+                    src={
+                      partner.url_avt ||
+                      `https://ui-avatars.com/api/?name=${partner.name || partner.username || 'U'}&background=random`
+                    }
+                    className="w-12 h-12 rounded-full object-cover"
+                    alt={partner.name}
+                  />
+                  {partner.is_online && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                  )}
+                </div>
+                <div className="flex-1 text-left min-w-0">
+                  <p
+                    className={`text-sm truncate ${conv.unread_count > 0 ? 'font-semibold' : 'font-normal'}`}
+                  >
+                    {partner.name || partner.username || 'Người dùng'}
+                  </p>
+                  <p
+                    className={`text-xs truncate ${conv.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}
+                  >
+                    {conv.last_message || 'Bắt đầu cuộc trò chuyện'}
+                  </p>
+                </div>
+                {conv.unread_count > 0 && (
+                  <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
+                    {conv.unread_count}
+                  </span>
                 )}
-              </div>
-              <div className="flex-1 text-left min-w-0">
-                <p
-                  className={`text-sm truncate ${conv.unread_count > 0 ? 'font-semibold' : 'font-normal'}`}
-                >
-                  {conv.partner?.name || conv.partner?.username || 'Người dùng'}
-                </p>
-                <p
-                  className={`text-xs truncate ${conv.unread_count > 0 ? 'text-gray-900 font-semibold' : 'text-gray-400'}`}
-                >
-                  {conv.last_message || 'Bắt đầu cuộc trò chuyện'}
-                </p>
-              </div>
-              {conv.unread_count > 0 && (
-                <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-semibold">
-                  {conv.unread_count}
-                </span>
-              )}
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Chat area */}
+      {/* ========== CỘT PHẢI: KHU VỰC CHAT (có scroll riêng) ========== */}
       {activeConv ? (
-        <div className="flex-1 flex flex-col">
-          {/* Chat header */}
+        <div className="flex-1 flex flex-col h-full">
+          {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
             <img
               src={
-                activeConv.partner?.url_avt ||
-                `https://ui-avatars.com/api/?name=${activeConv.partner?.name || activeConv.partner?.username || 'U'}&background=random`
+                getPartnerInfo(activeConv).url_avt ||
+                `https://ui-avatars.com/api/?name=${getPartnerInfo(activeConv).name || getPartnerInfo(activeConv).username || 'U'}&background=random`
               }
               className="w-9 h-9 rounded-full object-cover"
-              alt={activeConv.partner?.name}
+              alt={getPartnerInfo(activeConv).name}
             />
             <div>
               <p className="font-semibold text-sm">
-                {activeConv.partner?.name || activeConv.partner?.username || 'Người dùng'}
+                {getPartnerInfo(activeConv).name ||
+                  getPartnerInfo(activeConv).username ||
+                  'Người dùng'}
               </p>
               <p className="text-xs text-gray-400">
-                {activeConv.partner?.is_online ? 'Đang hoạt động' : 'Offline'}
+                {getPartnerInfo(activeConv).is_online
+                  ? 'Đang hoạt động'
+                  : 'Offline'}
               </p>
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2">
+          {/* Messages (scroll) */}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-2 min-h-0">
             {loading && (
               <div className="flex justify-center py-4">
                 <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
@@ -280,10 +379,11 @@ export default function Messages() {
             )}
             {messages.map((msg) => {
               const isMine = msg.sender?.user_id === me?.user_id;
+              const isPending = msg.isPending === true;
               return (
                 <div
                   key={msg.message_id}
-                  className={`flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}
+                  className={`flex gap-2 ${isMine ? 'flex-row-reverse' : ''} ${isPending ? 'opacity-70' : ''}`}
                 >
                   {!isMine && (
                     <img
@@ -299,38 +399,42 @@ export default function Messages() {
                     className={`max-w-xs ${isMine ? 'items-end' : 'items-start'} flex flex-col`}
                   >
                     {msg.url_img && (
-                      <img
+                      <SecureImage
                         src={msg.url_img}
-                        className="rounded-xl max-w-48 mb-1 cursor-pointer hover:opacity-90"
                         alt=""
+                        className={`rounded-xl max-w-48 mb-1 cursor-pointer hover:opacity-90 ${isPending ? 'opacity-60' : ''}`}
                       />
                     )}
                     {msg.content && (
                       <div
-                        className={`px-4 py-2 rounded-3xl text-sm ${
+                        className={`px-4 py-2 rounded-3xl text-sm flex items-center gap-2 ${
                           isMine
                             ? 'bg-blue-500 text-white rounded-br-sm'
                             : 'bg-gray-100 text-gray-900 rounded-bl-sm'
-                        }`}
+                        } ${isPending ? 'opacity-60' : ''}`}
                       >
                         {msg.content}
+                        {isPending && (
+                          <div className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                        )}
                       </div>
                     )}
-                    <span className="text-xs text-gray-400 mt-1">
-                      {formatTime(msg.created_at)}
+                    <span
+                      className={`text-xs mt-1 ${isPending ? 'text-gray-300' : 'text-gray-400'}`}
+                    >
+                      {isPending ? 'Đang gửi...' : formatTime(msg.created_at)}
                     </span>
                   </div>
                 </div>
               );
             })}
 
-            {/* Typing indicator */}
             {isPartnerTyping && (
               <div className="flex gap-2">
                 <img
                   src={
-                    activeConv.partner?.url_avt ||
-                    `https://ui-avatars.com/api/?name=${activeConv.partner?.name || activeConv.partner?.username || 'U'}&background=random`
+                    getPartnerInfo(activeConv).url_avt ||
+                    `https://ui-avatars.com/api/?name=${getPartnerInfo(activeConv).name || getPartnerInfo(activeConv).username || 'U'}&background=random`
                   }
                   className="w-7 h-7 rounded-full object-cover self-end"
                   alt=""
@@ -371,7 +475,7 @@ export default function Messages() {
             </div>
           )}
 
-          {/* Message input */}
+          {/* Input */}
           <form
             onSubmit={handleSend}
             className="flex items-center gap-3 px-4 py-4 border-t border-gray-100"

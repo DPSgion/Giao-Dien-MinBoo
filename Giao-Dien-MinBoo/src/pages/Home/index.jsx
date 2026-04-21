@@ -99,9 +99,6 @@ export default function Home() {
     return (
         <div className="flex justify-center gap-8 px-4 py-6 min-h-screen">
             <div className="w-full max-w-[470px]">
-                <div className="mb-6">
-                    <StoryBar />
-                </div>
 
                 {posts.map((post) => (
                     <PostCard key={post.post_id} post={post} onDelete={handleDeletePost} />
