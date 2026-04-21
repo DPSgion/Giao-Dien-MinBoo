@@ -72,7 +72,8 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     // Lấy đầy đủ profile từ BE bằng user id
-    const fetchFullProfile = async (userId) => {
+    //note: vanhau bỏ userId do không dùng.
+    const fetchFullProfile = async () => {
         try {
             // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
             const profileRes = await userService.getCurrentUser();
