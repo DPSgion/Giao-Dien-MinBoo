@@ -284,7 +284,7 @@ export default function Messages() {
   return (
     <div className="flex h-full w-full border-l border-gray-200">
       {/* ========== CỘT TRÁI: DANH SÁCH CHAT (có scroll riêng) ========== */}
-      <div className="w-80 border-r border-gray-200 flex flex-col flex-shrink-0 h-full">
+      <div className="w-80 border-r border-gray-200 flex flex-col flex-shrink-0 h-full overflow-y-auto">
         <div className="px-5 py-4 border-b border-gray-100">
           <h2 className="font-bold text-base">{me?.username}</h2>
         </div>
@@ -345,7 +345,7 @@ export default function Messages() {
 
       {/* ========== CỘT PHẢI: KHU VỰC CHAT (có scroll riêng) ========== */}
       {activeConv ? (
-        <div className="flex-1 flex flex-col h-full">
+        <div className="flex-1 flex flex-col h-screen">
           {/* Header */}
           <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
             <img

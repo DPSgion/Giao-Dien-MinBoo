@@ -111,6 +111,14 @@ export const postService = {
     axiosClient.post(`/posts/${postId}/report`, data),
 
   getPost: (postId) => axiosClient.get(`/posts/${postId}`),
+  // apiServices.js - postService
+  searchPosts: (keyword, tagIds = [], page = 0, size = 10) => {
+    const params = { keyword, page, size };
+    if (tagIds && tagIds.length) {
+      params.tag_id = tagIds; // Axios tự động chuyển thành ?tag_id=1&tag_id=2
+    }
+    return axiosClient.get('/posts/search', { params });
+  },
 };
 
 export const commentService = {
