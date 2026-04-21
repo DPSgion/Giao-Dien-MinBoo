@@ -85,7 +85,7 @@ export const friendService = {
 
     // POST /friends/unfriend/{friendId} - Hủy kết bạn
     unfriend: (friendId) =>
-        axiosClient.post(`/friends/unfriend/${friendId}`),
+        axiosClient.delete(`/friends/unfriend/${friendId}`),
 };
 
 
