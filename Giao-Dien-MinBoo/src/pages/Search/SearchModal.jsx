@@ -72,6 +72,7 @@ export default function SearchModal({ onClose }) {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => searchPosts(), 400);
     return () => clearTimeout(debounceRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [postKeyword, selectedTags, activeTab]);
 
   // ==================== Tìm kiếm user ====================

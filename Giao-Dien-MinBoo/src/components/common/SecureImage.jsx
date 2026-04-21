@@ -10,6 +10,8 @@ export default function SecureImage({ src, alt, className }) {
   useEffect(() => {
     if (!src) return;
 
+    let currentBlobUrl = null;
+
     const fullUrl = src.startsWith('http')
       ? src
       : `${BASE_URL}/${src.startsWith('/') ? src.slice(1) : src}`;
@@ -24,21 +26,23 @@ export default function SecureImage({ src, alt, className }) {
         return res.blob();
       })
       .then((blob) => {
-        setImageUrl(URL.createObjectURL(blob));
+        currentBlobUrl = URL.createObjectURL(blob);
+        setImageUrl(currentBlobUrl);
         setError(false);
       })
       .catch((err) => {
         console.error('Không thể tải ảnh:', fullUrl, err);
         setError(true);
-        setImageUrl(''); // Xóa blob URL cũ nếu có
+        setImageUrl('');
       });
 
+    // Cleanup: thu hồi blob URL cũ (nếu có) khi component unmount hoặc src thay đổi
     return () => {
-      if (imageUrl && imageUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(imageUrl);
+      if (currentBlobUrl) {
+        URL.revokeObjectURL(currentBlobUrl);
       }
     };
-  }, [src]);
+  }, [src]); 
 
   if (error) {
     // Hiển thị placeholder hoặc icon báo lỗi

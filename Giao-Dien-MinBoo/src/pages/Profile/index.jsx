@@ -29,6 +29,7 @@ export default function Profile() {
         fetchProfile();
         fetchPosts();
         if (!isMe) checkFriendStatus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userId, targetId]);
 
     // ===== CHECK FRIEND STATUS from BE =====

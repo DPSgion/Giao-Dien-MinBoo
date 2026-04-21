@@ -71,6 +71,7 @@ export default function Home() {
         }, { threshold: 0.1 });
         if (bottomRef.current) observer.observe(bottomRef.current);
         return () => observer.disconnect();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasMore, fetchFeed]);
 
     const handleDeletePost = async (postId) => {

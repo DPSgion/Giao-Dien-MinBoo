@@ -30,6 +30,7 @@ export default function Notifications() {
     useEffect(() => {
         fetchNotifications();
         fetchFriendRequests();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filter]);
 
     // ============================================================

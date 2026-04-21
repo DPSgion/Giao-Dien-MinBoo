@@ -41,6 +41,19 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+     // Lấy đầy đủ profile từ BE bằng user id
+    //note: vanhau bỏ userId do không dùng.
+    const fetchFullProfile = async () => {
+        try {
+            // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
+            const profileRes = await userService.getCurrentUser();
+            const profileData = profileRes.data?.data || profileRes.data || profileRes;
+            return normalizeUser(profileData);
+        } catch (e) {
+            console.warn("Không lấy được profile sau login:", e);
+            return null;
+        }
+    };
     useEffect(() => {
         const initAuth = async () => {
             const savedUser = localStorage.getItem("user");
@@ -53,7 +66,7 @@ export const AuthProvider = ({ children }) => {
                     const payload = decodeJwtPayload(token);
                     const userId = payload?.sub || payload?.user_id || payload?.id;
                     if (userId) {
-                        const fullProfile = await fetchFullProfile(userId);
+                        const fullProfile = await fetchFullProfile();// bỏ userId
                         if (fullProfile) {
                             parsed = fullProfile;
                             localStorage.setItem("user", JSON.stringify(parsed));
@@ -71,19 +84,7 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    // Lấy đầy đủ profile từ BE bằng user id
-    //note: vanhau bỏ userId do không dùng.
-    const fetchFullProfile = async () => {
-        try {
-            // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
-            const profileRes = await userService.getCurrentUser();
-            const profileData = profileRes.data?.data || profileRes.data || profileRes;
-            return normalizeUser(profileData);
-        } catch (e) {
-            console.warn("Không lấy được profile sau login:", e);
-            return null;
-        }
-    };
+   
 
     // [API 2.2] Login
     const login = async (credentials) => {

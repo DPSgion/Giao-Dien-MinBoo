@@ -34,6 +34,7 @@ export default function Messages() {
 
     setupWebSocket();
     return () => teardownWebSocket();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me?.user_id]);
 
   // ============================================================
