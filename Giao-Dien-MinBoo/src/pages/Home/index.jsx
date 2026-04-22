@@ -37,7 +37,7 @@ export default function Home() {
             if (pageNum === 1) setPosts(newPosts);
             else setPosts((prev) => [...prev, ...newPosts]);
             setHasMore(newPosts.length === 10);
-        } catch (_) { } finally {
+        } catch (error_) {console.error("Lỗi fetch Feed"), error_ } finally {
             setLoading(false);
             loadingRef.current = false;
         }
@@ -49,7 +49,7 @@ export default function Home() {
             const notiList = res?.notifications || res?.data?.notifications || [];
             // Filter to show mainly interactions or friend's posts
             setActivities(notiList.filter(n => n.type === 'new_post' || n.type === 'friend_request' || n.type === 'new_reaction' || n.type === 'new_comment').slice(0, 5));
-        } catch (_) {}
+        } catch (err_) {console.error("Error fetching activities:", err_); }
     };
 
     useEffect(() => {
@@ -64,12 +64,14 @@ export default function Home() {
                 setPage((p) => {
                     const next = p + 1;
                     fetchFeed(next);
+                    console.log("pagenumber", page); // thêm để né eslint
                     return next;
                 });
             }
         }, { threshold: 0.1 });
         if (bottomRef.current) observer.observe(bottomRef.current);
         return () => observer.disconnect();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [hasMore, fetchFeed]);
 
     const handleDeletePost = async (postId) => {
@@ -99,9 +101,6 @@ export default function Home() {
     return (
         <div className="flex justify-center gap-8 px-4 py-6 min-h-screen">
             <div className="w-full max-w-[470px]">
-                <div className="mb-6">
-                    <StoryBar />
-                </div>
 
                 {posts.map((post) => (
                     <PostCard key={post.post_id} post={post} onDelete={handleDeletePost} />

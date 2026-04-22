@@ -19,7 +19,7 @@ export default function AdminUsers() {
       const res = await adminService.getUsers(params);
       setUsers(res.data?.users || []);
       setPagination(res.data?.pagination || { total: 0 });
-    } catch (_) {
+    } catch (error_) { console.error('Error fetching users:', error_); 
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,8 @@ export default function AdminUsers() {
           u.user_id === userId ? { ...u, is_active: !currentStatus } : u
         )
       );
-    } catch (_) {
+    } catch (error_) {
+      console.error('Error toggling user status:', error_);
     } finally {
       setTogglingId(null);
     }

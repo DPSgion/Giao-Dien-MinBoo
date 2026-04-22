@@ -19,7 +19,7 @@ export default function StoryBar() {
                     user_id: f.user_id || f.id,
                 }));
                 setFriends(mapped);
-            } catch (_) { }
+            } catch (_err) {console.error('Error fetching friends cho stories:', _err);}
         };
         fetchFriends();
     }, []);

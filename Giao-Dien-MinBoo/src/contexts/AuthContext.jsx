@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import authService from "../services/authService";
-import axiosClient from "../services/axiosClient";
+// import axiosClient from "../services/axiosClient";
 import { userService } from "../services/apiServices";
 const AuthContext = createContext(null);
 
@@ -16,6 +16,7 @@ function decodeJwtPayload(token) {
         );
         return JSON.parse(jsonPayload);
     } catch (e) {
+        console.error('Invalid JWT token:', e);
         return null;
     }
 }
@@ -40,6 +41,19 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
+     // Lấy đầy đủ profile từ BE bằng user id
+    //note: vanhau bỏ userId do không dùng.
+    const fetchFullProfile = async () => {
+        try {
+            // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
+            const profileRes = await userService.getCurrentUser();
+            const profileData = profileRes.data?.data || profileRes.data || profileRes;
+            return normalizeUser(profileData);
+        } catch (e) {
+            console.warn("Không lấy được profile sau login:", e);
+            return null;
+        }
+    };
     useEffect(() => {
         const initAuth = async () => {
             const savedUser = localStorage.getItem("user");
@@ -52,7 +66,7 @@ export const AuthProvider = ({ children }) => {
                     const payload = decodeJwtPayload(token);
                     const userId = payload?.sub || payload?.user_id || payload?.id;
                     if (userId) {
-                        const fullProfile = await fetchFullProfile(userId);
+                        const fullProfile = await fetchFullProfile();// bỏ userId
                         if (fullProfile) {
                             parsed = fullProfile;
                             localStorage.setItem("user", JSON.stringify(parsed));
@@ -70,18 +84,7 @@ export const AuthProvider = ({ children }) => {
         initAuth();
     }, []);
 
-    // Lấy đầy đủ profile từ BE bằng user id
-    const fetchFullProfile = async (userId) => {
-        try {
-            // Sử dụng getCurrentUser đã được bọc logic phân biệt UUID bên apiServices
-            const profileRes = await userService.getCurrentUser();
-            const profileData = profileRes.data?.data || profileRes.data || profileRes;
-            return normalizeUser(profileData);
-        } catch (e) {
-            console.warn("Không lấy được profile sau login:", e);
-            return null;
-        }
-    };
+   
 
     // [API 2.2] Login
     const login = async (credentials) => {
@@ -160,7 +163,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const refresh_token = localStorage.getItem("refresh_token");
             await authService.logout(refresh_token);
-        } catch (_) { }
+        } catch (err_) {console.error("Error log out", err_) }
         localStorage.clear();
         setUser(null);
     };

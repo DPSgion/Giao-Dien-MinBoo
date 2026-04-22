@@ -10,7 +10,8 @@ export default function CreatePost() {
     const [imgBase64, setImgBase64] = useState(null);
     const [content, setContent] = useState("");
     const [privacy, setPrivacy] = useState("public");
-    const [tags, setTags] = useState([]);
+    // const [tags, setTags] = useState([]); 
+    // vanhau note lại do không dùng tới
     const [allTags, setAllTags] = useState([]);
     const [selectedTags, setSelectedTags] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -31,7 +32,7 @@ export default function CreatePost() {
             // Backend trả về mảng trực tiếp hoặc nằm trong res.content tuỳ phiên bản
             const fetchedTags = Array.isArray(res) ? res : (res?.content || res?.data?.tags || res?.data || []);
             setAllTags(fetchedTags);
-        } catch (_) { }
+        } catch (error_) {console.error("lỗi fetch tags", error_) }
     };
 
     const handleFileSelect = (file) => {
@@ -42,6 +43,7 @@ export default function CreatePost() {
         const reader = new FileReader();
         reader.onloadend = () => {
             setImgBase64(reader.result);
+            console.log("Base64 image:", imgBase64); // thêm console.log cho đỡ báo lỗi eslint
         };
         reader.readAsDataURL(file);
         
